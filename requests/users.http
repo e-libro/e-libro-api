@@ -1,0 +1,64 @@
+@host = localhost
+@version = v1
+@port = 8083
+# @email = alfredo.ernesto.arias@gmail.com 
+@email = alfredo.ernesto.arias@outlook.com 
+@password = 123456@aM
+# https://marketplace.visualstudio.com/items?itemName=humao.rest-client
+# https://www.trpkovski.com/2023/03/19/setting-up-global-variables-in-the-rest-client-vs-code-extension
+# @name signin
+
+POST http://{{host}}:{{port}}/{{version}}/auth/signin HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "{{ email }}",
+  "password": "{{ password }}"
+}
+
+###
+
+@accessToken = {{ signin.response.body.$.accessToken }}
+
+###
+
+POST http://{{host}}:{{port}}/{{version}}/users HTTP/1.1
+Content-Type: application/json
+
+{
+  "fullname": "John Doe",
+  "email": "john.doe@email.com",
+  "password": "123456@aM"
+}
+
+###
+GET http://{{host}}:{{port}}/{{version}}/users HTTP/1.1
+Content-Type: application/json
+
+###
+
+GET http://{{host}}:{{port}}/{{version}}/users/6747dafac04f22c1e97c67fa HTTP/1.1
+Content-Type: application/json
+
+###
+
+GET http://{{host}}:{{port}}/{{version}}/users/6747dafac04f22c1e97c67fb HTTP/1.1
+Content-Type: application/json
+
+###
+
+PUT http://{{host}}:{{port}}/{{version}}/users/676a31cf6ccd5866de9d02f2 HTTP/1.1
+Content-Type: application/json
+
+{
+  "fullname": "John Doe",
+  "email": "john.doe@email.com",
+  "role": "user",
+  "password": "{{ password }}"
+}
+
+###
+
+DELETE http://{{host}}:{{port}}/{{version}}/users/676a31cf6ccd5866de9d02f2 HTTP/1.1
+Content-Type: application/json
+
