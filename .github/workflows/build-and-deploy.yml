@@ -65,19 +65,23 @@ jobs:
             echo ${{ secrets.GH_TOKEN }} | docker login ghcr.io -u e-libro --password-stdin
 
             # Stop and remove the existing container if it exists
-            if [ \$(docker ps -a -q -f name=e-libro-api) ]; then
+            if docker ps -a --filter "name=e-libro-api" --format '{{.Names}}' | grep -w e-libro-api; then
+              echo "Stopping and removing existing container..."
               docker rm -f e-libro-api
             fi
 
             # Remove the existing image if it exists
-            if [ \$(docker images -q ghcr.io/e-libro/e-libro-api:latest) ]; then
+            if docker images -q ghcr.io/e-libro/e-libro-api:latest; then
+              echo "Removing existing image..."
               docker rmi -f ghcr.io/e-libro/e-libro-api:latest
             fi
 
             # Pull the latest image
+            echo "Pulling the latest image..."
             docker pull ghcr.io/e-libro/e-libro-api:latest
 
             # Create the environment file securely
+            echo "Creating environment file..."
             echo "DB_URL=$DB_URL" > ~/.env.production.api
             echo "PORT=$PORT" >> ~/.env.production.api
             echo "CORS_ORIGIN=$CORS_ORIGIN" >> ~/.env.production.api
@@ -87,6 +91,7 @@ jobs:
             chmod 600 ~/.env.production.api
 
             # Start the new container
+            echo "Starting new container..."
             docker run -d --name e-libro-api --env-file ~/.env.production.api -p 8081:8081 ghcr.io/e-libro/e-libro-api
           EOF
 
