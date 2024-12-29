@@ -74,12 +74,12 @@ jobs:
 
             docker pull ghcr.io/e-libro/e-libro-api:latest
 
-            echo $DB_URL > ~/.env.production.api
-            echo $PORT >> ~/.env.production.apiv
-            echo $CORS_ORIGIN >> ~/.env.production.api
-            echo $ACCESS_TOKEN_SECRET >> ~/.env.production.api
-            echo $REFRESH_TOKEN_SECRET >> ~/.env.production.api
-            echo $ENCRYPTION_SECRET_KEY >> ~/.env.production.api
+            echo "DB_URL=$DB_URL" > ~/.env.production.api
+            echo "PORT=$PORT" >> ~/.env.production.api
+            echo "CORS_ORIGIN=$CORS_ORIGIN" >> ~/.env.production.api
+            echo "ACCESS_TOKEN_SECRET=$ACCESS_TOKEN_SECRET" >> ~/.env.production.api
+            echo "REFRESH_TOKEN_SECRET=$REFRESH_TOKEN_SECRET" >> ~/.env.production.api
+            echo "ENCRYPTION_SECRET_KEY=$ENCRYPTION_SECRET_KEY" >> ~/.env.production.api
                         
             docker run -d --name e-libro-api --env-file ~/.env.production.api -p 8081:8081 ghcr.io/e-libro/e-libro-api
           EOF
