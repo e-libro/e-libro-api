@@ -6,7 +6,7 @@ describe("UserDTO", () => {
   test("mapUserToUserResponseDTO - should map user entity to UserResponseDTO correctly", () => {
     const user = {
       _id: "123",
-      name: "John Doe",
+      fullname: "John Doe",
       email: "john@example.com",
       role: "user",
       createdAt: "2023-01-01T00:00:00Z",
@@ -16,7 +16,7 @@ describe("UserDTO", () => {
 
     expect(result).toEqual({
       id: "123",
-      name: "John Doe",
+      fullname: "John Doe",
       email: "john@example.com",
       role: "user",
       createdAt: "2023-01-01T00:00:00Z",
