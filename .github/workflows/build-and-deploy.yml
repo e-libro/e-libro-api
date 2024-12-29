@@ -92,7 +92,7 @@ jobs:
 
             # Start the new container
             echo "Starting new container..."
-            docker run -d --name e-libro-api --env-file ~/.env.production.api -p 8081:8081 ghcr.io/e-libro/e-libro-api
+            docker run -d --name e-libro-api --env-file ~/.env.production.api -p 10.116.0.3:8081:8081 ghcr.io/e-libro/e-libro-api
           EOF
 
       - name: Notify deployment success
