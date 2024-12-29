@@ -11,18 +11,14 @@ let httpServer;
 
 dotenv.config();
 
-const PORT = process.env.PORT || 3000;
-const DB_URL = process.env.DB_URL;
+const PORT = process.env.PORT || 8083;
+const DB_URL = process.env.DB_URL || "mongodb://localhost:27017/e-libro";
+const CORS_ORIGIN = process.env.CORS_ORIGIN;
 
 const server = express();
 
 const corsOptions = {
-  origin: [
-    "http://10.0.2.2",
-    "http://192.168.100.4",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-  ],
+  origin: CORS_ORIGIN,
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
