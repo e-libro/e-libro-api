@@ -74,14 +74,14 @@ jobs:
 
             docker pull ghcr.io/e-libro/e-libro-api:latest
 
-            echo $DB_URL > ~/.e-libro-api.env
-            echo $PORT >> ~/.e-libro-api.env
-            echo $CORS_ORIGIN >> ~/.e-libro-api.env
-            echo $ACCESS_TOKEN_SECRET >> ~/.e-libro-api.env
-            echo $REFRESH_TOKEN_SECRET >> ~/.e-libro-api.env
-            echo $ENCRYPTION_SECRET_KEY >> ~/.e-libro-api.env
+            echo $DB_URL > ~/.env.production.api
+            echo $PORT >> ~/.env.production.apiv
+            echo $CORS_ORIGIN >> ~/.env.production.api
+            echo $ACCESS_TOKEN_SECRET >> ~/.env.production.api
+            echo $REFRESH_TOKEN_SECRET >> ~/.env.production.api
+            echo $ENCRYPTION_SECRET_KEY >> ~/.env.production.api
                         
-            docker run -d --name e-libro-api --env-file ~/.e-libro-api.env -p 8081:8081 ghcr.io/e-libro/e-libro-api
+            docker run -d --name e-libro-api --env-file ~/.env.production.api -p 8081:8081 ghcr.io/e-libro/e-libro-api
           EOF
 
       - name: Notify build success
