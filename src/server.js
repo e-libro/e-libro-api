@@ -25,7 +25,7 @@ const corsOptions = {
 };
 
 const limiter = rateLimiter({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 5 * 60 * 1000,
   max: 1000,
   message: "Ha sobre pasado su límite de peticiones.",
 });

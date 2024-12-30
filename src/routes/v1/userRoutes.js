@@ -1,9 +1,6 @@
 import { Router } from "express";
 import { userController } from "../../controllers/index.js";
-import {
-  verifyRequestMiddleware,
-  validateRequestMiddleware,
-} from "../../middlewares/index.js";
+import { validateRequestMiddleware } from "../../middlewares/index.js";
 import { userSchemas } from "../../validations/index.js";
 
 const userRouter = Router();
@@ -17,9 +14,9 @@ userRouter.post(
   userController.createUser
 );
 
-userRouter.get("/v1/users", userController.getAllUsers);
-userRouter.get("/v1/users/:id", userController.getUserById);
-userRouter.put("/v1/users/:id", userController.updateUser);
-userRouter.delete("/v1/users/:id", userController.deleteUser);
+userRouter.route("/v1/users").get(userController.getAllUsers);
+userRouter.route("/v1/users/:id").get(userController.getUserById);
+userRouter.route("/v1/users/:id").put(userController.updateUser);
+userRouter.route("/v1/users/:id").delete( userController.deleteUser);
 
 export default userRouter;
