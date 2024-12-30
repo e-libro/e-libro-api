@@ -56,7 +56,7 @@ class UserController {
       }
 
       const sortBy = { fullname: "asc" };
-
+      console.log(filters);
       const users = await userService.getAllUsers(filters, sortBy, page, limit);
       const total = await userService.countUsers(filters);
 

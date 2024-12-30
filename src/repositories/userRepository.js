@@ -12,7 +12,7 @@ class UserRepository {
 
   async findAllUsers(filters, sortBy, page, limit) {
     try {
-      return await db.User.find({ filters })
+      return await db.User.find(filters)
         .sort(sortBy)
         .skip(page * limit)
         .limit(limit)

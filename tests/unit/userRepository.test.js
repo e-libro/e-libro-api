@@ -63,7 +63,7 @@ describe("User Repository", () => {
       limit
     );
 
-    expect(User.find).toHaveBeenCalledWith({ filters });
+    expect(User.find).toHaveBeenCalledWith(filters);
     expect(findMock.sort).toHaveBeenCalledWith(sortBy);
     expect(findMock.skip).toHaveBeenCalledWith(page * limit);
     expect(findMock.limit).toHaveBeenCalledWith(limit);
