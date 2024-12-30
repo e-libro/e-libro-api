@@ -8,14 +8,14 @@ describe("bookController", () => {
     jest.clearAllMocks();
   });
 
-  test("getAllBooks - should return 200 with books if they exist", async () => {
+  test("should return 200 with paginated books and metadata", async () => {
     const req = {
       query: {
         page: "1",
         limit: "5",
         title: "Test Title",
-        authors: "Author Name",
-        languages: "en",
+        author: "Author Name",
+        language: "en",
       },
     };
     const res = {
@@ -23,67 +23,114 @@ describe("bookController", () => {
       json: jest.fn(),
     };
 
+    const filters = {
+      title: { $regex: /Test Title/i },
+      "authors.name": { $regex: /Author Name/i },
+      languages: { $in: ["en"] },
+    };
+
     const books = [
-      { id: "1", title: "Test Title", authors: [{ name: "Author Name" }] },
+      {
+        id: "1",
+        title: "Book 1",
+        authors: [{ name: "Author Name" }],
+        languages: ["en"],
+      },
       {
         id: "2",
-        title: "Another Title",
-        authors: [{ name: "Another Author" }],
+        title: "Book 2",
+        authors: [{ name: "Author Name" }],
+        languages: ["en"],
       },
     ];
+    const total = 10;
+
     const bookResponseDTOs = books.map((book) => ({
       id: book.id,
       title: book.title,
       authors: book.authors.map((author) => author.name),
+      languages: book.languages,
     }));
 
-    const languagesOptions = ["en", "es", "fr"];
-
-    jest
-      .spyOn(bookService, "getDistinctBookLanguages")
-      .mockResolvedValue(languagesOptions);
     jest.spyOn(bookService, "getAllBooks").mockResolvedValue(books);
+    jest.spyOn(bookService, "countBooks").mockResolvedValue(total);
     jest
       .spyOn(bookDTO, "mapBookToBookResponseDTO")
       .mockImplementation((book) => ({
         id: book.id,
         title: book.title,
         authors: book.authors.map((author) => author.name),
+        languages: book.languages,
       }));
 
     await bookController.getAllBooks(req, res);
 
-    expect(bookService.getDistinctBookLanguages).toHaveBeenCalled();
     expect(bookService.getAllBooks).toHaveBeenCalledWith(
-      {
-        languages: { $in: ["en"] },
-        $or: [
-          { title: { $regex: /Test Title/i } },
-          { "authors.name": { $regex: /^Author Name/i } },
-        ],
-      },
+      filters,
       { title: "asc" },
       0,
       5
     );
+    expect(bookService.countBooks).toHaveBeenCalledWith(filters);
+    expect(bookDTO.mapBookToBookResponseDTO).toHaveBeenCalledTimes(
+      books.length
+    );
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      totalBooks: 2,
-      totalPages: 1,
+      totalBooks: total,
+      totalPages: 2,
       page: 1,
       limit: 5,
-      languages: ["en"],
       books: bookResponseDTOs,
+      language: "en",
     });
   });
-  test("getAllBooks - should return 204 if no books are found", async () => {
+
+  test("should return 204 if no books are found", async () => {
     const req = {
       query: {
         page: "1",
         limit: "5",
-        title: "Non-existent Title",
-        authors: "Unknown Author",
-        languages: "fr",
+        title: "Nonexistent Title",
+        author: "Unknown Author",
+        language: "fr",
+      },
+    };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+      sendStatus: jest.fn(),
+    };
+
+    const filters = {
+      title: { $regex: /Nonexistent Title/i },
+      "authors.name": { $regex: /Unknown Author/i },
+      languages: { $in: ["fr"] },
+    };
+
+    jest.spyOn(bookService, "getAllBooks").mockResolvedValue([]);
+    jest.spyOn(bookService, "countBooks").mockResolvedValue(0);
+
+    await bookController.getAllBooks(req, res);
+
+    expect(bookService.getAllBooks).toHaveBeenCalledWith(
+      filters,
+      { title: "asc" },
+      0,
+      5
+    );
+    expect(bookService.countBooks).toHaveBeenCalledWith(filters);
+    expect(res.sendStatus).toHaveBeenCalledWith(204);
+  });
+
+  test("should return 500 on service error", async () => {
+    const req = {
+      query: {
+        page: "1",
+        limit: "5",
+        title: "Test Title",
+        author: "Author Name",
+        language: "en",
       },
     };
     const res = {
@@ -91,31 +138,16 @@ describe("bookController", () => {
       json: jest.fn(),
     };
 
-    const languagesOptions = ["en", "es", "fr"];
-
     jest
-      .spyOn(bookService, "getDistinctBookLanguages")
-      .mockResolvedValue(languagesOptions);
-    jest.spyOn(bookService, "getAllBooks").mockResolvedValue([]);
+      .spyOn(bookService, "getAllBooks")
+      .mockRejectedValue(new Error("Service error"));
 
     await bookController.getAllBooks(req, res);
 
-    expect(bookService.getDistinctBookLanguages).toHaveBeenCalled();
-    expect(bookService.getAllBooks).toHaveBeenCalledWith(
-      {
-        languages: { $in: ["fr"] },
-        $or: [
-          { title: { $regex: /Non-existent Title/i } },
-          { "authors.name": { $regex: /^Unknown Author/i } },
-        ],
-      },
-      { title: "asc" },
-      0,
-      5
-    );
-    expect(res.status).toHaveBeenCalledWith(204);
+    expect(bookService.getAllBooks).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
-      message: "No content",
+      errorMessage: "Internal Server Error",
     });
   });
 

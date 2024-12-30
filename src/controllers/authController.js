@@ -60,7 +60,7 @@ class AuthController {
 
           res.cookie("jwt", refreshToken, {
             httpOnly: true,
-            sameSite: "None",
+            sameSite: "Strict",
             secure: true,
             maxAge: 24 * 60 * 60 * 1000,
           });
@@ -117,7 +117,7 @@ class AuthController {
         // TODO set secure: true on production
         res.cookie("jwt", newRefreshToken, {
           httpOnly: true,
-          sameSite: "None",
+          sameSite: "Strict",
           secure: true,
           maxAge: 24 * 60 * 60 * 1000,
         });
@@ -162,11 +162,33 @@ class AuthController {
     // res.clearCookie("jwt", { httpOnly: true, sameSite: "strict", secure: true });
     res.clearCookie("jwt", {
       httpOnly: true,
-      sameSite: "strict", // "strict",
+      sameSite: "Strict", // "strict",
       secure: true,
     });
 
     return res.status(204).json({ message: "Signout successful" });
+  }
+
+  async getAuthenticatedUser(req, res) {
+    try {
+      const authenticatedUser = userDTO.mapUserToUserResponseDTO(req.user);
+
+      if (!authenticatedUser) {
+        return res.status(401).json({ errorMessage: "Unauthorized" });
+      }
+
+      return res.status(200).json({
+        message: "Authenticated user retrieved successfully",
+        user: authenticatedUser,
+      });
+    } catch (error) {
+      console.error(
+        `Error in AuthController.getAuthenticatedUser: ${error.message}`
+      );
+      return res.status(500).json({
+        errorMessage: "Internal Server Error",
+      });
+    }
   }
 }
 

@@ -1,10 +1,10 @@
-@host = api.e-libro.app
+@host = localhost
 @version = v1
 @port = 8083
 @email = alfredo.ernesto.arias@gmail.com
 @password = 123456@aM
-# https://marketplace.visualstudio.com/items?itemName=humao.rest-client
-# https://www.trpkovski.com/2023/03/19/setting-up-global-variables-in-the-rest-client-vs-code-extension
+### 
+
 # @name signin
 
 POST http://{{host}}:{{port}}/{{version}}/auth/signin HTTP/1.1
@@ -21,7 +21,20 @@ Content-Type: application/json
 
 ###
 
-GET http://{{host}}:{{port}}/{{version}}/books?page=1&limit=5&title=asdfasdfsdfsdf HTTP/1.1
+GET http://{{host}}:{{port}}/{{version}}/books?page=1&limit=5&title=amor HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{ accessToken }}
+
+
+###
+
+GET http://{{host}}:{{port}}/{{version}}/books?page=1&limit=5&author=juan HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{ accessToken }}
+
+###
+
+GET http://{{host}}:{{port}}/{{version}}/books HTTP/1.1
 Content-Type: application/json
 Authorization: Bearer {{ accessToken }}
 
@@ -82,7 +95,7 @@ Authorization: Bearer {{ accessToken }}
 
 ###
 
-GET http://{{host}}:{{port}}/{{version}}/books?page=1&limit=5&title=libertad HTTP/1.1
+GET http://{{host}}:{{port}}/{{version}}/books?page=1&limit=5&title=amor HTTP/1.1
 Content-Type: application/json
 
 ###

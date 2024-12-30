@@ -1,9 +1,9 @@
 import { jest } from "@jest/globals";
-import UserController from "../../src/controllers/userController.js";
+import userController from "../../src/controllers/userController.js";
 import { userService } from "../../src/services/index.js";
 import { userDTO } from "../../src/dtos/index.js";
 
-describe("UserController", () => {
+describe("userController", () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -39,7 +39,7 @@ describe("UserController", () => {
       .spyOn(userDTO, "mapUserToUserResponseDTO")
       .mockReturnValue(userResponseDTO);
 
-    await UserController.createUser(req, res);
+    await userController.createUser(req, res);
 
     expect(userService.createUser).toHaveBeenCalledWith(req.body);
     expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(createdUser);
@@ -59,7 +59,7 @@ describe("UserController", () => {
       json: jest.fn(),
     };
 
-    await UserController.createUser(req, res);
+    await userController.createUser(req, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
@@ -67,17 +67,31 @@ describe("UserController", () => {
     });
   });
 
-  test("getAllUsers - should return 200 with users if they exist", async () => {
-    const req = {};
+  test("should return 200 with paginated users and metadata", async () => {
+    const req = {
+      query: {
+        page: "1",
+        limit: "5",
+        fullname: "John",
+        email: "john@example.com",
+      },
+    };
     const res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
     };
 
+    const filters = {
+      fullname: { $regex: /John/i },
+      email: { $regex: /john@example.com/i },
+    };
+
     const users = [
       { id: "1", fullname: "John Doe", email: "john@example.com" },
-      { id: "2", fullname: "Jane Doe", email: "jane@example.com" },
+      { id: "2", fullname: "Johnny Smith", email: "johnny@example.com" },
     ];
+    const total = 10;
+
     const userResponseDTOs = users.map((user) => ({
       id: user.id,
       name: user.fullname,
@@ -85,6 +99,7 @@ describe("UserController", () => {
     }));
 
     jest.spyOn(userService, "getAllUsers").mockResolvedValue(users);
+    jest.spyOn(userService, "countUsers").mockResolvedValue(total);
     jest
       .spyOn(userDTO, "mapUserToUserResponseDTO")
       .mockImplementation((user) => ({
@@ -93,11 +108,88 @@ describe("UserController", () => {
         email: user.email,
       }));
 
-    await UserController.getAllUsers(req, res);
+    await userController.getAllUsers(req, res);
+
+    expect(userService.getAllUsers).toHaveBeenCalledWith(
+      filters,
+      { fullname: "asc" },
+      0,
+      5
+    );
+    expect(userService.countUsers).toHaveBeenCalledWith(filters);
+    expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledTimes(
+      users.length
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      totalUsers: total,
+      totalPages: 2,
+      page: 1,
+      limit: 5,
+      users: userResponseDTOs,
+    });
+  });
+
+  test("should return 204 if no users are found", async () => {
+    const req = {
+      query: {
+        page: "1",
+        limit: "5",
+        fullname: "Unknown",
+        email: "unknown@example.com",
+      },
+    };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+      sendStatus: jest.fn(),
+    };
+
+    const filters = {
+      fullname: { $regex: /Unknown/i },
+      email: { $regex: /unknown@example.com/i },
+    };
+
+    jest.spyOn(userService, "getAllUsers").mockResolvedValue([]);
+    jest.spyOn(userService, "countUsers").mockResolvedValue(0);
+
+    await userController.getAllUsers(req, res);
+
+    expect(userService.getAllUsers).toHaveBeenCalledWith(
+      filters,
+      { fullname: "asc" },
+      0,
+      5
+    );
+    expect(userService.countUsers).toHaveBeenCalledWith(filters);
+    expect(res.sendStatus).toHaveBeenCalledWith(204);
+  });
+
+  test("should return 500 on service error", async () => {
+    const req = {
+      query: {
+        page: "1",
+        limit: "5",
+        fullname: "John",
+        email: "john@example.com",
+      },
+    };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    jest
+      .spyOn(userService, "getAllUsers")
+      .mockRejectedValue(new Error("Service error"));
+
+    await userController.getAllUsers(req, res);
 
     expect(userService.getAllUsers).toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ users: userResponseDTOs });
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      errorMessage: "Internal Server Error",
+    });
   });
 
   test("getUserById - should return 404 if user is not found", async () => {
@@ -109,7 +201,7 @@ describe("UserController", () => {
 
     jest.spyOn(userService, "getUserById").mockResolvedValue(null);
 
-    await UserController.getUserById(req, res);
+    await userController.getUserById(req, res);
 
     expect(userService.getUserById).toHaveBeenCalledWith("123");
     expect(res.status).toHaveBeenCalledWith(404);
@@ -131,7 +223,7 @@ describe("UserController", () => {
 
     jest.spyOn(userService, "updateUser").mockResolvedValue(updatedUser);
 
-    await UserController.updateUser(req, res);
+    await userController.updateUser(req, res);
 
     expect(userService.updateUser).toHaveBeenCalledWith("123", {
       fullname: "Updated Name",
@@ -155,7 +247,7 @@ describe("UserController", () => {
 
     jest.spyOn(userService, "deleteUser").mockResolvedValue(deletedUser);
 
-    await UserController.deleteUser(req, res);
+    await userController.deleteUser(req, res);
 
     expect(userService.deleteUser).toHaveBeenCalledWith("123");
     expect(res.status).toHaveBeenCalledWith(200);

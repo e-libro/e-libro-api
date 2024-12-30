@@ -65,24 +65,3 @@ export async function verifyToken(req, res, next) {
     return res.status(401).json({ statusCode: 401, message: "Unauthorized" });
   }
 }
-
-export function authorizeAdminOrOwner(req, res, next) {
-  const userRole = req.user.role; // Asumiendo que el rol está en req.user
-  const userId = req.user.id; // Asumiendo que el ID del usuario autenticado está en req.user
-  const paramId = req.params.id; // ID del usuario en la URL
-
-  // Permitir si el usuario es administrador
-  if (userRole === "admin") {
-    return next();
-  }
-
-  // Permitir si el usuario es propietario del recurso
-  if (userId === paramId) {
-    return next();
-  }
-
-  // Si no cumple ninguna condición, denegar acceso
-  return res.status(403).json({
-    message: "Acceso denegado: No autorizado para realizar esta acción",
-  });
-}

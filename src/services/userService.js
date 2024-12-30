@@ -16,8 +16,8 @@ class UserService {
     return await userRepository.createUser(user);
   }
 
-  async getAllUsers() {
-    return await userRepository.findAllUsers();
+  async getAllUsers(filters, sortBy, page, limit) {
+    return await userRepository.findAllUsers(filters, sortBy, page, limit);
   }
 
   async getUserByEmail(email) {
@@ -100,6 +100,26 @@ class UserService {
       );
       throw error;
     }
+  }
+
+  async verifyAccessToken(token) {
+    try {
+      if (!token) {
+        throw new Error("Access token is required");
+      }
+      const user = await userRepository.verifyAccessToken(token);
+      if (!user) {
+        throw new Error("Invalid or expired access token");
+      }
+      return user;
+    } catch (error) {
+      console.error(`Error in UserService.verifyAccessToken: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async countUsers(filters) {
+    return await userRepository.countUsers(filters);
   }
 }
 

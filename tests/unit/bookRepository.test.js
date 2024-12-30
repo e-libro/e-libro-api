@@ -20,22 +20,6 @@ describe("Pruebas para BookRepository", () => {
     jest.clearAllMocks();
   });
 
-  test("Debe crear un libro", async () => {
-    const bookData = {
-      gutenbergId: 12345,
-      title: "Test Book",
-      authors: [{ name: "Author Name" }],
-      type: "Fiction",
-    };
-
-    jest.spyOn(Book, "create").mockResolvedValue(bookData);
-
-    const result = await bookRepository.createBook(bookData);
-
-    expect(Book.create).toHaveBeenCalledWith(bookData);
-    expect(result).toEqual(bookData);
-  });
-
   test("Debe recuperar todos los libros con filtros y paginación", async () => {
     const booksMock = [
       { gutenbergId: 12345, title: "Book 1", type: "Fiction" },
@@ -176,6 +160,42 @@ describe("Pruebas para BookRepository", () => {
 
     await expect(bookRepository.incrementDownloads(bookId)).rejects.toThrow(
       "Failed to increment downloads"
+    );
+  });
+
+  test("should return the total count of books matching the filter", async () => {
+    const filter = { genre: "Fiction" };
+    const countMock = 42;
+
+    jest.spyOn(Book, "countDocuments").mockResolvedValue(countMock);
+
+    const result = await bookRepository.countBooks(filter);
+
+    expect(Book.countDocuments).toHaveBeenCalledWith(filter);
+    expect(result).toBe(countMock);
+  });
+
+  test("should return 0 if no books match the filter", async () => {
+    const filter = { genre: "Nonexistent Genre" };
+    const countMock = 0;
+
+    jest.spyOn(Book, "countDocuments").mockResolvedValue(countMock);
+
+    const result = await bookRepository.countBooks(filter);
+
+    expect(Book.countDocuments).toHaveBeenCalledWith(filter);
+    expect(result).toBe(countMock);
+  });
+
+  test("should throw an error if database operation fails", async () => {
+    const filter = { genre: "Fiction" };
+
+    jest
+      .spyOn(Book, "countDocuments")
+      .mockRejectedValue(new Error("Database error"));
+
+    await expect(bookRepository.countBooks(filter)).rejects.toThrow(
+      "Database error"
     );
   });
 });

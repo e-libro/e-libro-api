@@ -1,24 +1,6 @@
 import bookRepository from "../repositories/bookRepository.js";
 
 class BookService {
-  async createBook(book) {
-    if (!book.gutenbergId || !book.title || !book.type) {
-      throw new Error(
-        "Missing required fields: gutenbergId, title, and type are mandatory"
-      );
-    }
-
-    const existingBook = await bookRepository.findBookByGutenbergId(
-      book.gutenbergId
-    );
-
-    if (existingBook) {
-      throw new Error("A book with this Gutenberg ID already exists");
-    }
-
-    return await bookRepository.createBook(book);
-  }
-
   async getAllBooks(filters, sortBy, page, limit) {
     return await bookRepository.findAllBooks(filters, sortBy, page, limit);
   }
@@ -89,6 +71,10 @@ class BookService {
       throw new Error(`Book with ID ${bookId} not found`);
     }
     return book;
+  }
+
+  async countBooks(filters) {
+    return await bookRepository.countBooks(filters);
   }
 }
 

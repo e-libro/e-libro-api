@@ -58,6 +58,45 @@ describe("Pruebas para userService", () => {
     expect(result).toEqual(usersMock);
   });
 
+  test("should return a list of users from the repository", async () => {
+    const filters = { role: "user" };
+    const sortBy = { createdAt: "desc" };
+    const page = 0;
+    const limit = 5;
+
+    const usersMock = [
+      { id: "1", name: "User One", role: "user" },
+      { id: "2", name: "User Two", role: "user" },
+    ];
+
+    jest.spyOn(userRepository, "findAllUsers").mockResolvedValue(usersMock);
+
+    const result = await userService.getAllUsers(filters, sortBy, page, limit);
+
+    expect(userRepository.findAllUsers).toHaveBeenCalledWith(
+      filters,
+      sortBy,
+      page,
+      limit
+    );
+    expect(result).toEqual(usersMock);
+  });
+
+  test("should throw an error if the repository operation fails", async () => {
+    const filters = { role: "user" };
+    const sortBy = { createdAt: "desc" };
+    const page = 0;
+    const limit = 5;
+
+    jest
+      .spyOn(userRepository, "findAllUsers")
+      .mockRejectedValue(new Error("Repository error"));
+
+    await expect(
+      userService.getAllUsers(filters, sortBy, page, limit)
+    ).rejects.toThrow("Repository error");
+  });
+
   test("Debe lanzar un error si falta el email al buscar un usuario por email", async () => {
     await expect(userService.getUserByEmail(null)).rejects.toThrow(
       "Email is required"
@@ -213,6 +252,83 @@ describe("Pruebas para userService", () => {
 
     await expect(userService.verifyRefreshToken(token)).rejects.toThrow(
       "Invalid or expired refresh token"
+    );
+  });
+
+  test("should return user if access token is valid", async () => {
+    const token = "validAccessToken";
+    const userMock = { id: "123", email: "test@example.com" };
+
+    jest.spyOn(userRepository, "verifyAccessToken").mockResolvedValue(userMock);
+
+    const result = await userService.verifyAccessToken(token);
+
+    expect(userRepository.verifyAccessToken).toHaveBeenCalledWith(token);
+    expect(result).toEqual(userMock);
+  });
+
+  test("should throw an error if token is missing", async () => {
+    await expect(userService.verifyAccessToken(null)).rejects.toThrow(
+      "Access token is required"
+    );
+  });
+
+  test("should throw an error if token verification fails", async () => {
+    const token = "invalidAccessToken";
+
+    jest.spyOn(userRepository, "verifyAccessToken").mockResolvedValue(null);
+
+    await expect(userService.verifyAccessToken(token)).rejects.toThrow(
+      "Invalid or expired access token"
+    );
+  });
+
+  test("should throw an error if repository throws an error", async () => {
+    const token = "validAccessToken";
+
+    jest
+      .spyOn(userRepository, "verifyAccessToken")
+      .mockRejectedValue(new Error("Repository error"));
+
+    await expect(userService.verifyAccessToken(token)).rejects.toThrow(
+      "Repository error"
+    );
+  });
+
+  // ------------------------------------------------
+  test("should return the total count of users from the repository", async () => {
+    const filters = { role: "user" };
+    const countMock = 10;
+
+    jest.spyOn(userRepository, "countUsers").mockResolvedValue(countMock);
+
+    const result = await userService.countUsers(filters);
+
+    expect(userRepository.countUsers).toHaveBeenCalledWith(filters);
+    expect(result).toBe(countMock);
+  });
+
+  test("should return 0 if no users match the filters", async () => {
+    const filters = { role: "nonexistentRole" };
+    const countMock = 0;
+
+    jest.spyOn(userRepository, "countUsers").mockResolvedValue(countMock);
+
+    const result = await userService.countUsers(filters);
+
+    expect(userRepository.countUsers).toHaveBeenCalledWith(filters);
+    expect(result).toBe(countMock);
+  });
+
+  test("should throw an error if the repository operation fails", async () => {
+    const filters = { role: "user" };
+
+    jest
+      .spyOn(userRepository, "countUsers")
+      .mockRejectedValue(new Error("Repository error"));
+
+    await expect(userService.countUsers(filters)).rejects.toThrow(
+      "Repository error"
     );
   });
 });

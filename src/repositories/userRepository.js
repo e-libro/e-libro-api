@@ -10,9 +10,13 @@ class UserRepository {
     }
   }
 
-  async findAllUsers() {
+  async findAllUsers(filters, sortBy, page, limit) {
     try {
-      return await db.User.find({});
+      return await db.User.find({ filters })
+        .sort(sortBy)
+        .skip(page * limit)
+        .limit(limit)
+        .exec();
     } catch (error) {
       console.error(`Error fetching users: ${error}`);
       throw new Error("Failed to fetch users");
@@ -90,6 +94,29 @@ class UserRepository {
     } catch (error) {
       console.error(`Error verifying refresh token: ${error.message}`);
       throw new Error("Failed to verify refresh token");
+    }
+  }
+
+  async verifyAccessToken(token) {
+    try {
+      if (!token) {
+        throw new Error("Access token is required");
+      }
+      const user = await db.User.verifyAccessToken(token);
+      return user;
+    } catch (error) {
+      console.error(`Error verifying access token: ${error.message}`);
+      throw new Error("Failed to verify access token");
+    }
+  }
+
+  async countUsers(filters) {
+    try {
+      const total = await db.User.countDocuments(filters);
+      return total;
+    } catch (error) {
+      console.error("Error en countUsers del bookRepository:", error.message);
+      throw error;
     }
   }
 }

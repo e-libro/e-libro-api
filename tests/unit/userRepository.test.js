@@ -36,15 +36,53 @@ describe("User Repository", () => {
     expect(userInDb).toBeDefined();
   });
 
-  it("Debería obtener todos los usuarios", async () => {
-    await userRepository.createUser(mockUser);
-    await userRepository.createUser({
-      ...mockUser,
-      email: "test2@example.com",
+  test("should return a paginated list of users matching the filters", async () => {
+    const filters = { role: "user" };
+    const sortBy = { createdAt: "desc" };
+    const page = 0;
+    const limit = 5;
+
+    const usersMock = [
+      { id: "1", name: "User One", role: "user" },
+      { id: "2", name: "User Two", role: "user" },
+    ];
+
+    const findMock = {
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(usersMock),
+    };
+
+    jest.spyOn(User, "find").mockReturnValue(findMock);
+
+    const result = await userRepository.findAllUsers(
+      filters,
+      sortBy,
+      page,
+      limit
+    );
+
+    expect(User.find).toHaveBeenCalledWith({ filters });
+    expect(findMock.sort).toHaveBeenCalledWith(sortBy);
+    expect(findMock.skip).toHaveBeenCalledWith(page * limit);
+    expect(findMock.limit).toHaveBeenCalledWith(limit);
+    expect(result).toEqual(usersMock);
+  });
+
+  test("should throw an error if database operation fails", async () => {
+    const filters = { role: "user" };
+    const sortBy = { createdAt: "desc" };
+    const page = 0;
+    const limit = 5;
+
+    jest.spyOn(User, "find").mockImplementation(() => {
+      throw new Error("Database error");
     });
 
-    const users = await userRepository.findAllUsers();
-    expect(users).toHaveLength(2);
+    await expect(
+      userRepository.findAllUsers(filters, sortBy, page, limit)
+    ).rejects.toThrow("Failed to fetch users");
   });
 
   it("Debería encontrar un usuario por email", async () => {
@@ -125,11 +163,21 @@ describe("User Repository", () => {
   });
 
   test("Debe lanzar un error al intentar obtener todos los usuarios", async () => {
-    jest.spyOn(User, "find").mockRejectedValue(new Error("Database Error"));
+    const filters = {};
+    const sortBy = { createdAt: "desc" };
+    const page = 0;
+    const limit = 5;
 
-    await expect(userRepository.findAllUsers()).rejects.toThrow(
-      "Failed to fetch users"
-    );
+    jest.spyOn(User, "find").mockImplementation(() => ({
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockRejectedValue(new Error("Database Error")),
+    }));
+
+    await expect(
+      userRepository.findAllUsers(filters, sortBy, page, limit)
+    ).rejects.toThrow("Failed to fetch users");
   });
 
   test("Debe lanzar un error al intentar obtener un usuario por email", async () => {
@@ -234,6 +282,73 @@ describe("User Repository", () => {
 
     await expect(userRepository.verifyRefreshToken(token)).rejects.toThrow(
       "Failed to verify refresh token"
+    );
+  });
+
+  test("should return user if access token is valid", async () => {
+    const token = "validAccessToken";
+    const userMock = { id: "123", email: "test@example.com" };
+
+    jest.spyOn(User, "verifyAccessToken").mockResolvedValue(userMock);
+
+    const result = await userRepository.verifyAccessToken(token);
+
+    expect(User.verifyAccessToken).toHaveBeenCalledWith(token);
+    expect(result).toEqual(userMock);
+  });
+
+  test("should throw an error if token is missing", async () => {
+    await expect(userRepository.verifyAccessToken(null)).rejects.toThrow(
+      "Failed to verify access token"
+    );
+  });
+
+  test("should throw an error if token verification fails", async () => {
+    const token = "invalidAccessToken";
+
+    jest
+      .spyOn(User, "verifyAccessToken")
+      .mockRejectedValue(new Error("Invalid token"));
+
+    await expect(userRepository.verifyAccessToken(token)).rejects.toThrow(
+      "Failed to verify access token"
+    );
+  });
+
+  // --------------------------
+  test("should return the total count of users matching the filters", async () => {
+    const filters = { role: "user" };
+    const countMock = 10;
+
+    jest.spyOn(User, "countDocuments").mockResolvedValue(countMock);
+
+    const result = await userRepository.countUsers(filters);
+
+    expect(User.countDocuments).toHaveBeenCalledWith(filters);
+    expect(result).toBe(countMock);
+  });
+
+  test("should return 0 if no users match the filters", async () => {
+    const filters = { role: "nonexistentRole" };
+    const countMock = 0;
+
+    jest.spyOn(User, "countDocuments").mockResolvedValue(countMock);
+
+    const result = await userRepository.countUsers(filters);
+
+    expect(User.countDocuments).toHaveBeenCalledWith(filters);
+    expect(result).toBe(countMock);
+  });
+
+  test("should throw an error if database operation fails", async () => {
+    const filters = { role: "user" };
+
+    jest
+      .spyOn(User, "countDocuments")
+      .mockRejectedValue(new Error("Database error"));
+
+    await expect(userRepository.countUsers(filters)).rejects.toThrow(
+      "Database error"
     );
   });
 });

@@ -4,7 +4,7 @@ import { userDTO } from "../dtos/index.js";
 class UserController {
   async createUser(req, res) {
     try {
-      const { fullname, email, password } = req.body;
+      const { fullname, email, password, role } = req.body;
 
       if (!fullname || !email || !password)
         return res.status(400).json({
@@ -15,6 +15,7 @@ class UserController {
         fullname,
         email,
         password,
+        role,
       });
 
       const userResponseDTO = userDTO.mapUserToUserResponseDTO(createdUser);
@@ -39,19 +40,46 @@ class UserController {
 
   async getAllUsers(req, res) {
     try {
-      const users = await userService.getAllUsers();
+      const page = Math.max(0, parseInt(req.query.page)) - 1 || 0;
+      const limit = parseInt(req.query.limit) || 5;
+      const fullname = req.query.fullname || "";
+      const email = req.query.email || "";
 
-      if (!users || users.length === 0) {
-        return res.status(204).json({ message: "No users exists." });
+      const filters = {};
+
+      if (fullname) {
+        filters.fullname = { $regex: new RegExp(fullname, "i") };
       }
 
-      const userResponseDTOs = users.map(userDTO.mapUserToUserResponseDTO);
+      if (email) {
+        filters.email = { $regex: new RegExp(email, "i") };
+      }
 
-      return res.status(200).json({ users: userResponseDTOs });
+      const sortBy = { fullname: "asc" };
+
+      const users = await userService.getAllUsers(filters, sortBy, page, limit);
+      const total = await userService.countUsers(filters);
+
+      if (!users || users.length === 0) {
+        return res.sendStatus(204);
+      }
+
+      const userResponseDTOs = users.map((user) =>
+        userDTO.mapUserToUserResponseDTO(user)
+      );
+
+      const response = {
+        totalUsers: total,
+        totalPages: Math.ceil(total / limit),
+        page: page + 1,
+        limit,
+        users: userResponseDTOs,
+      };
+      return res.status(200).json(response);
     } catch (error) {
-      console.log(error);
+      console.error("Error in getAllUsers:", error.message);
       return res.status(500).json({
-        errorMessage: "Internal Server Error: Unable to retrieve users",
+        errorMessage: "Internal Server Error",
       });
     }
   }

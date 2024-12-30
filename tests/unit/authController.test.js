@@ -61,7 +61,7 @@ describe("authController", () => {
       };
       const userResponseDTO = {
         id: "123",
-        name: "John Doe",
+        fullname: "John Doe",
         email: "test@example.com",
       };
 
@@ -236,6 +236,77 @@ describe("authController", () => {
       expect(res.clearCookie).toHaveBeenCalledWith("jwt", expect.any(Object));
       expect(res.status).toHaveBeenCalledWith(204);
       expect(res.json).toHaveBeenCalledWith({ message: "Signout successful" });
+    });
+  });
+
+  test("should return 200 with authenticated user", async () => {
+    const userMock = {
+      id: "123",
+      name: "John Doe",
+      email: "john@example.com",
+      role: "user",
+    };
+    const userResponseDTO = {
+      id: "123",
+      name: "John Doe",
+      email: "john@example.com",
+      role: "user",
+    };
+
+    const req = { user: userMock };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    jest
+      .spyOn(userDTO, "mapUserToUserResponseDTO")
+      .mockReturnValue(userResponseDTO);
+
+    await authController.getAuthenticatedUser(req, res);
+
+    expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(userMock);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Authenticated user retrieved successfully",
+      user: userResponseDTO,
+    });
+  });
+
+  test("should return 401 if user is not authenticated", async () => {
+    const req = { user: null };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    jest.spyOn(userDTO, "mapUserToUserResponseDTO").mockReturnValue(null);
+
+    await authController.getAuthenticatedUser(req, res);
+
+    expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(null);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ errorMessage: "Unauthorized" });
+  });
+
+  test("should return 500 on server error", async () => {
+    const userMock = { id: "123", name: "John Doe", email: "john@example.com" };
+    const req = { user: userMock };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    jest.spyOn(userDTO, "mapUserToUserResponseDTO").mockImplementation(() => {
+      throw new Error("Mapping error");
+    });
+
+    await authController.getAuthenticatedUser(req, res);
+
+    expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(userMock);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      errorMessage: "Internal Server Error",
     });
   });
 });

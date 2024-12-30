@@ -1,15 +1,6 @@
 import db from "../models/index.js";
 
 class BookRepository {
-  async createBook(book) {
-    try {
-      return await db.Book.create(book);
-    } catch (error) {
-      console.error(`Error creating book: ${error}`);
-      throw new Error("Failed to create book");
-    }
-  }
-
   async findAllBooks(filters, sortBy, page, limit) {
     try {
       return await db.Book.find(filters)
@@ -103,6 +94,16 @@ class BookRepository {
     } catch (error) {
       console.error(`Error incrementing downloads: ${error.message}`);
       throw new Error("Failed to increment downloads");
+    }
+  }
+
+  async countBooks(filters) {
+    try {
+      const total = await db.Book.countDocuments(filters);
+      return total;
+    } catch (error) {
+      console.error("Error en countBooks del bookRepository:", error.message);
+      throw error;
     }
   }
 }
