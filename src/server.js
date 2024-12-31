@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import rateLimiter from "express-rate-limit";
+
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
@@ -32,14 +32,6 @@ server.use(
     credentials: true,
     optionsSuccessStatus: 200,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  })
-);
-
-server.use(
-  rateLimiter({
-    windowMs: 5 * 60 * 1000,
-    max: 1000,
-    message: "Ha sobre pasado su límite de peticiones.",
   })
 );
 

@@ -10,7 +10,9 @@ bookRouter
   .route("/v1/books")
   .get(authMiddleware.verifyToken, cache("1 hour"), bookController.getAllBooks);
 
-bookRouter.route("/v1/books/:id").get(bookController.getBookById);
+bookRouter
+  .route("/v1/books/:id")
+  .get(authMiddleware.verifyToken, cache("1 day"), bookController.getBookById);
 
 bookRouter
   .route("/v1/books/:id/downloads")
