@@ -31,12 +31,10 @@ export const verifyToken = async (req, res, next) => {
     }
 
     req.user = user;
-    console.log(req.user);
     next();
   } catch (err) {
     console.error("Error authenticating user:", err);
 
-    // Manejo de errores por tipo
     if (err.name === "TokenExpiredError") {
       return res
         .status(401)
@@ -47,4 +45,34 @@ export const verifyToken = async (req, res, next) => {
       .status(401)
       .json({ errorMessage: "Unauthorized: Authentication failed." });
   }
+};
+
+export const verifyRole = (roles = []) => {
+  return (req, res, next) => {
+    try {
+      if (!req?.user?.role) {
+        return res.status(403).json({
+          statusCode: 403,
+          message: "Forbidden",
+          error: "You do not have permission to access this resource",
+        });
+      }
+
+      const hasPermission = roles.some((role) => role === req.user.role);
+      if (!hasPermission) {
+        return res.status(403).json({
+          statusCode: 403,
+          message: "Forbidden",
+          error: "You do not have permission to access this resource",
+        });
+      }
+
+      next();
+    } catch (err) {
+      console.error("Error in verifyRole middleware:", err.message);
+      return res.status(500).json({
+        errorMessage: "Internal Server Error",
+      });
+    }
+  };
 };

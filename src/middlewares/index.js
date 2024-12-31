@@ -1,4 +1,4 @@
-import * as verifyRequestMiddleware from "./verifyRequestMiddleware.js";
 import * as validateRequestMiddleware from "./validateRequestMiddleware.js";
+import * as authMiddleware from "./authMiddleware.js";
 
-export { verifyRequestMiddleware, validateRequestMiddleware };
+export { authMiddleware, validateRequestMiddleware };

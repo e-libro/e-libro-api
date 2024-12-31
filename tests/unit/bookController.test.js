@@ -8,7 +8,7 @@ describe("bookController", () => {
     jest.clearAllMocks();
   });
 
-  test("should return 200 with paginated books and metadata", async () => {
+  test("getAllBooks - should return 200 with paginated books and metadata", async () => {
     const req = {
       query: {
         page: "1",
@@ -86,7 +86,7 @@ describe("bookController", () => {
     });
   });
 
-  test("should return 204 if no books are found", async () => {
+  test("getAllBooks - should return 204 if no books are found", async () => {
     const req = {
       query: {
         page: "1",
@@ -123,7 +123,7 @@ describe("bookController", () => {
     expect(res.sendStatus).toHaveBeenCalledWith(204);
   });
 
-  test("should return 500 on service error", async () => {
+  test("getAllBooks - should return 500 on service error", async () => {
     const req = {
       query: {
         page: "1",
@@ -151,42 +151,24 @@ describe("bookController", () => {
     });
   });
 
-  test("getBookById - should return 200 with the book if found", async () => {
-    const req = { params: { id: "123" } };
+  test("getBookById - should return 400 if book ID is missing or invalid", async () => {
+    const req = { params: { id: "invalid-id" } };
     const res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
     };
 
-    const book = {
-      id: "123",
-      title: "Test Title",
-      authors: [{ name: "Author Name" }],
-    };
-
-    const bookResponseDTO = {
-      id: "123",
-      title: "Test Title",
-      authors: ["Author Name"],
-    };
-
-    jest.spyOn(bookService, "getBookById").mockResolvedValue(book);
-
-    jest
-      .spyOn(bookDTO, "mapBookToBookResponseDTO")
-      .mockReturnValue(bookResponseDTO);
-
     await bookController.getBookById(req, res);
 
-    expect(bookService.getBookById).toHaveBeenCalledWith("123");
-    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      book: bookResponseDTO,
+      status: "error",
+      message: "Bad Request: Invalid or missing book ID",
     });
   });
 
-  test("getBookById - should return 404 if the book is not found", async () => {
-    const req = { params: { id: "123" } };
+  test("getBookById - should return 404 if book is not found", async () => {
+    const req = { params: { id: "60e6f965b4d6c9e529c7f0b3" } };
     const res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
@@ -196,14 +178,75 @@ describe("bookController", () => {
 
     await bookController.getBookById(req, res);
 
-    expect(bookService.getBookById).toHaveBeenCalledWith("123");
+    expect(bookService.getBookById).toHaveBeenCalledWith(
+      "60e6f965b4d6c9e529c7f0b3"
+    );
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({
-      errorMessage: "Book Not Found",
+      status: "error",
+      message: "Book Not Found",
     });
   });
 
-  // incrementDownloads
+  test("getBookById - should return 200 with book data if book is found", async () => {
+    const req = { params: { id: "60e6f965b4d6c9e529c7f0b3" } };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    const bookMock = {
+      id: "60e6f965b4d6c9e529c7f0b3",
+      title: "Test Book",
+      authors: ["Author One", "Author Two"],
+    };
+    const bookResponseDTO = {
+      id: "60e6f965b4d6c9e529c7f0b3",
+      title: "Test Book",
+      authors: ["Author One", "Author Two"],
+    };
+
+    jest.spyOn(bookService, "getBookById").mockResolvedValue(bookMock);
+    jest
+      .spyOn(bookDTO, "mapBookToBookResponseDTO")
+      .mockReturnValue(bookResponseDTO);
+
+    await bookController.getBookById(req, res);
+
+    expect(bookService.getBookById).toHaveBeenCalledWith(
+      "60e6f965b4d6c9e529c7f0b3"
+    );
+    expect(bookDTO.mapBookToBookResponseDTO).toHaveBeenCalledWith(bookMock);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      status: "success",
+      data: bookResponseDTO,
+    });
+  });
+
+  test("getBookById - should return 500 on service error", async () => {
+    const req = { params: { id: "60e6f965b4d6c9e529c7f0b3" } };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    jest
+      .spyOn(bookService, "getBookById")
+      .mockRejectedValue(new Error("Service error"));
+
+    await bookController.getBookById(req, res);
+
+    expect(bookService.getBookById).toHaveBeenCalledWith(
+      "60e6f965b4d6c9e529c7f0b3"
+    );
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      status: "error",
+      message: "Internal Server Error",
+    });
+  });
+
   test("incrementDownloads - should return 200 with updated book and mapped DTO", async () => {
     const req = { params: { id: "123" } };
     const res = {

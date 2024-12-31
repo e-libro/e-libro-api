@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "type": "module",
-    "scripts": {
+  "scripts": {
     "start": "node ./index.js",
     "dev": "nodemon ./index.js",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules npx jest --detectOpenHandles",
@@ -25,6 +25,8 @@
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.2",
+    "morgan": "^1.10.0",
+    "winston": "^3.17.0",
     "yup": "^1.4.0"
   },
   "devDependencies": {

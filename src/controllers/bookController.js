@@ -60,9 +60,10 @@ class bookController {
     try {
       const { id } = req.params;
 
-      if (!id) {
+      if (!id || !/^[a-f\d]{24}$/i.test(id)) {
         return res.status(400).json({
-          errorMessage: "Bad Request: Missing book ID",
+          status: "error",
+          message: "Bad Request: Invalid or missing book ID",
         });
       }
 
@@ -70,18 +71,21 @@ class bookController {
 
       if (!book) {
         return res.status(404).json({
-          errorMessage: "Book Not Found",
+          status: "error",
+          message: "Book Not Found",
         });
       }
 
       const bookResponseDTO = bookDTO.mapBookToBookResponseDTO(book);
 
       return res.status(200).json({
-        book: bookResponseDTO,
+        status: "success",
+        data: bookResponseDTO,
       });
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching book by ID:", error.message);
       return res.status(500).json({
+        status: "error",
         message: "Internal Server Error",
       });
     }

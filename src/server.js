@@ -6,37 +6,42 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import db from "./models/index.js";
 import { authRouter, bookRouter, userRouter } from "./routes/v1/index.js";
+import morgan from "morgan";
+import logger from "./logger/logger.js";
+
+const ENV = process.env.NODE_ENV || "development";
+const CORS_ORIGIN = ENV === "production" ? process.env.CORS_ORIGIN : "*";
+const FORMAT = ENV === "production" ? "combined" : "dev";
+const PORT = process.env.PORT || 8083;
+const DB_URL = process.env.DB_URL || "mongodb://localhost:27017/e-libro";
 
 let httpServer;
 
 dotenv.config();
 
-const PORT = process.env.PORT || 8083;
-const DB_URL = process.env.DB_URL || "mongodb://localhost:27017/e-libro";
-const CORS_ORIGIN = process.env.CORS_ORIGIN;
-
 const server = express();
 
-const corsOptions = {
-  origin: CORS_ORIGIN,
-  credentials: true,
-  optionsSuccessStatus: 200,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-};
-
-const limiter = rateLimiter({
-  windowMs: 5 * 60 * 1000,
-  max: 1000,
-  message: "Ha sobre pasado su límite de peticiones.",
-});
-
-server.use(helmet());
-server.use(cors(corsOptions));
-
-server.use(limiter);
+server.use(morgan(FORMAT, { write: (message) => logger.info(message.trim()) }));
 
 server.use(express.json());
 server.use(cookieParser());
+server.use(helmet());
+server.use(
+  cors({
+    origin: CORS_ORIGIN,
+    credentials: true,
+    optionsSuccessStatus: 200,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  })
+);
+
+server.use(
+  rateLimiter({
+    windowMs: 5 * 60 * 1000,
+    max: 1000,
+    message: "Ha sobre pasado su límite de peticiones.",
+  })
+);
 
 server.use(authRouter);
 server.use(bookRouter);
@@ -57,6 +62,7 @@ server.use((err, req, res, next) => {
 
 const startServer = async () => {
   try {
+    console.log(process.env.NODE_ENV);
     await db.mongoose.connect(DB_URL, {});
     console.log(`Connected to MongoDB on ${DB_URL}.`);
     httpServer = server.listen(PORT, () => {
