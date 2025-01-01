@@ -1,5 +1,6 @@
 import { bookService } from "../services/index.js";
 import { bookDTO } from "../dtos/index.js";
+import mongoose from "mongoose";
 
 class bookController {
   async getAllBooks(req, res) {
@@ -58,7 +59,14 @@ class bookController {
 
   async getBookById(req, res) {
     try {
-      const { id } = req.params || null;
+      const { id } = req.params;
+
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          status: "error",
+          message: "Bad Request: Invalid or missing book ID",
+        });
+      }
 
       const book = await bookService.getBookById(id);
 
