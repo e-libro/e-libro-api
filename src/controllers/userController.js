@@ -98,7 +98,7 @@ class UserController {
         return res.status(404).json({ errorMessage: "User not found" });
       }
 
-      const userResponseDTO = UserDTO.mapUserToUserResponseDTO(user);
+      const userResponseDTO = userDTO.mapUserToUserResponseDTO(user);
 
       res.json({ user: userResponseDTO });
     } catch (e) {

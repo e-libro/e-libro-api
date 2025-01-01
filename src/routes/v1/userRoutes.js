@@ -17,7 +17,6 @@ userRouter
     ),
     userController.createUser
   );
-
 userRouter
   .route("/v1/users")
   .get(
