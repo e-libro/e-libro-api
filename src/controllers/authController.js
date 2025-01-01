@@ -32,7 +32,6 @@ class AuthController {
         user: userResponseDTO,
       });
     } catch (e) {
-      console.log(e);
       return res.status(500).json({
         errorMessage: "Internal Server Error: Signup failed",
       });
@@ -82,7 +81,6 @@ class AuthController {
         });
       }
     } catch (err) {
-      console.log(err);
       return res
         .status(500)
         .json({ errorMessage: "Internal Server Error: Signin failed" });
@@ -122,7 +120,6 @@ class AuthController {
           maxAge: 24 * 60 * 60 * 1000,
         });
 
-        console.log(newAccessToken);
         return res.status(200).json({
           statusCode: 200,
           message: "refresh successful",

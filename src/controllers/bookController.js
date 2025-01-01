@@ -58,14 +58,7 @@ class bookController {
 
   async getBookById(req, res) {
     try {
-      const { id } = req.params;
-
-      if (!id || !/^[a-f\d]{24}$/i.test(id)) {
-        return res.status(400).json({
-          status: "error",
-          message: "Bad Request: Invalid or missing book ID",
-        });
-      }
+      const { id } = req.params || null;
 
       const book = await bookService.getBookById(id);
 
