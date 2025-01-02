@@ -149,10 +149,16 @@ class UserController {
 
       const deletedUser = await userService.deleteUser(id);
 
+      if (!deletedUser) {
+        throw ApiError.NotFound(`User with ID ${id} not found`);
+      }
+
+      const userResponseDTO = userDTO.mapUserToUserResponseDTO(deletedUser);
+
       return res.status(200).json({
         status: "success",
         message: "User deleted successfully",
-        data: deletedUser,
+        data: userResponseDTO,
         error: null,
       });
     } catch (error) {

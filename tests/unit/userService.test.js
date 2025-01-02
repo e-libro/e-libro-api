@@ -227,7 +227,7 @@ describe("UserService", () => {
       jest.spyOn(userRepository, "verifyRefreshToken").mockResolvedValue(null);
 
       await expect(userService.verifyRefreshToken(token)).rejects.toThrow(
-        "InvaluserId or expired refresh token"
+        "Invalid userId or expired refresh token"
       );
     });
   });

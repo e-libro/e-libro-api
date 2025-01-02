@@ -8,7 +8,7 @@ import db from "./models/index.js";
 import { authRouter, bookRouter, userRouter } from "./routes/v1/index.js";
 import morgan from "morgan";
 import logger from "./logger/logger.js";
-
+import ApiError from "./errors/ApiError.js";
 import { apiErrorHandler } from "./middlewares/index.js";
 
 const ENV = process.env.NODE_ENV || "development";
@@ -42,19 +42,10 @@ server.use(bookRouter);
 server.use(userRouter);
 
 server.use((req, res, next) => {
-  res.status(404).json({
-    errorMessage: "Not Found: The requested resource could not be found",
-  });
+  next(ApiError.NotFound("The requested resource could not be found"));
 });
 
 server.use(apiErrorHandler);
-
-// server.use((err, req, res, next) => {
-//   console.error(err.stack);
-//   res.status(500).json({
-//     errorMessage: "Internal Server Error: An unexpected error occurred",
-//   });
-// });
 
 const startServer = async () => {
   try {

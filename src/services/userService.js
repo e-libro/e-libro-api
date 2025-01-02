@@ -125,13 +125,10 @@ class UserService {
       }
       const user = await userRepository.verifyRefreshToken(token);
       if (!user) {
-        throw new Error("InvaluserId or expired refresh token");
+        throw new Error("Invalid userId or expired refresh token");
       }
       return user;
     } catch (error) {
-      console.error(
-        `Error in UserService.verifyRefreshToken: ${error.message}`
-      );
       throw error;
     }
   }
@@ -143,11 +140,10 @@ class UserService {
       }
       const user = await userRepository.verifyAccessToken(token);
       if (!user) {
-        throw new Error("InvaluserId or expired access token");
+        throw new Error("Invalid userId or expired access token");
       }
       return user;
     } catch (error) {
-      console.error(`Error in UserService.verifyAccessToken: ${error.message}`);
       throw error;
     }
   }

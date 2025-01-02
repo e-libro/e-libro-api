@@ -211,20 +211,28 @@ describe("UserController", () => {
 
   describe("deleteUser", () => {
     test("should delete a user and return success response", async () => {
-      const req = { params: { id: "1" } };
+      const req = { params: { id: "60e6f965b4d6c9e529c7f0b3" } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
       const deletedUserMock = {
-        id: "1",
-        fullname: "Deleted User",
-        email: "deleted@example.com",
+        id: "60e6f965b4d6c9e529c7f0b3",
+        fullname: "John Doe",
+        email: "john@example.com",
       };
       jest.spyOn(userService, "deleteUser").mockResolvedValue(deletedUserMock);
+      jest
+        .spyOn(userDTO, "mapUserToUserResponseDTO")
+        .mockReturnValue(deletedUserMock);
 
       await userController.deleteUser(req, res, next);
 
-      expect(userService.deleteUser).toHaveBeenCalledWith("1");
+      expect(userService.deleteUser).toHaveBeenCalledWith(
+        "60e6f965b4d6c9e529c7f0b3"
+      );
+      expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(
+        deletedUserMock
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         status: "success",
@@ -232,6 +240,41 @@ describe("UserController", () => {
         data: deletedUserMock,
         error: null,
       });
+    });
+
+    test("should call next with ApiError.NotFound if user is not found", async () => {
+      const req = { params: { id: "60e6f965b4d6c9e529c7f0b3" } };
+      const res = {};
+      const next = jest.fn();
+
+      jest.spyOn(userService, "deleteUser").mockResolvedValue(null);
+
+      await userController.deleteUser(req, res, next);
+
+      expect(userService.deleteUser).toHaveBeenCalledWith(
+        "60e6f965b4d6c9e529c7f0b3"
+      );
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Not Found",
+          code: 404,
+        })
+      );
+    });
+
+    test("should call next with ApiError.BadRequest if ID is missing", async () => {
+      const req = { params: {} };
+      const res = {};
+      const next = jest.fn();
+
+      await userController.deleteUser(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "User ID is required",
+          code: 400,
+        })
+      );
     });
   });
 });
