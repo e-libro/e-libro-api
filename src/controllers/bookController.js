@@ -1,9 +1,14 @@
 import { bookService } from "../services/index.js";
 import { bookDTO } from "../dtos/index.js";
 import mongoose from "mongoose";
+import ApiError from "../errors/ApiError.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const env = process.env.NODE_ENV || "development";
 
 class bookController {
-  async getAllBooks(req, res) {
+  async getAllBooks(req, res, next) {
     try {
       const page = Math.max(0, parseInt(req.query.page) - 1 || 0);
       const limit = parseInt(req.query.limit) || 5;
@@ -32,89 +37,106 @@ class bookController {
       const total = await bookService.countBooks(filters);
 
       if (!books || books.length === 0) {
-        return res.sendStatus(204);
+        throw ApiError.NotFound("No books found");
       }
 
       const bookResponseDTOs = books.map((book) =>
         bookDTO.mapBookToBookResponseDTO(book)
       );
 
-      const response = {
-        totalBooks: total,
+      const data = {
+        totalDocuments: total,
         totalPages: Math.ceil(total / limit),
         page: page + 1,
         limit,
-        books: bookResponseDTOs,
-        language, // opcional, para que el frontend sepa el idioma aplicado en el filtro
+        documents: bookResponseDTOs,
+        language,
       };
 
-      return res.status(200).json(response);
-    } catch (error) {
-      console.error("Error in getAllBooks:", error.message);
-      return res.status(500).json({
-        errorMessage: "Internal Server Error",
+      return res.status(200).json({
+        status: "success",
+        message: "Book retrieved successfully",
+        data: data,
+        error: null,
       });
+    } catch (error) {
+      next(error);
     }
   }
 
-  async getBookById(req, res) {
+  async getBookById(req, res, next) {
     try {
       const { id } = req.params;
 
       if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({
-          status: "error",
-          message: "Bad Request: Invalid or missing book ID",
-        });
+        throw ApiError.BadRequest("Invalid or missing book ID");
       }
 
       const book = await bookService.getBookById(id);
 
       if (!book) {
-        return res.status(404).json({
-          status: "error",
-          message: "Book Not Found",
-        });
+        throw ApiError.NotFound("Book not found");
       }
 
       const bookResponseDTO = bookDTO.mapBookToBookResponseDTO(book);
 
       return res.status(200).json({
         status: "success",
+        message: "Book retrieved successfully",
         data: bookResponseDTO,
+        error: null,
       });
     } catch (error) {
-      console.error("Error fetching book by ID:", error.message);
-      return res.status(500).json({
-        status: "error",
-        message: "Internal Server Error",
-      });
+      if (env === "development") {
+        console.error("bookController.getBookById error: ", error);
+      }
+
+      if (error.message.includes("not found")) {
+        return res.status(404).json({
+          status: "error",
+          message: "Book not found",
+          data: null,
+          error: {
+            code: 404,
+            details: error.message,
+          },
+        });
+      }
+
+      next(error);
     }
   }
 
-  async incrementDownloads(req, res) {
+  async incrementDownloads(req, res, next) {
     try {
       const { id } = req.params;
-      if (!id) {
-        return res.status(400).json({ errorMessage: "Book ID is required" });
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw ApiError.BadRequest("Invalid or missing book ID");
       }
 
       const updatedBook = await bookService.incrementDownloads(id);
 
+      if (!updatedBook) {
+        throw ApiError.NotFound("Book not found");
+      }
+
       const bookResponseDTO = bookDTO.mapBookToBookResponseDTO(updatedBook);
 
       return res.status(200).json({
+        status: "success",
         message: "Book downloads incremented successfully",
-        book: bookResponseDTO,
+        data: bookResponseDTO,
+        error: null,
       });
     } catch (error) {
-      if (error.message.includes("not found")) {
-        return res.status(404).json({ errorMessage: error.message });
+      if (env === "development") {
+        console.error(
+          "bookController.incrementDownloads error: ",
+          error.message
+        );
       }
-      console.error(`Error in incrementDownloads: ${error.message}`);
-      return res.status(500).json({
-        errorMessage: "Internal Server Error",
-      });
+
+      next(error);
     }
   }
 }

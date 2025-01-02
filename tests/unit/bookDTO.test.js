@@ -27,7 +27,7 @@ describe("BookDTO", () => {
         contentType: "text/plain",
         url: "http://example.com/content.txt",
       },
-      donwloads: 42,
+      downloads: 42,
     });
   });
 

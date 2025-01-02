@@ -1,22 +1,21 @@
 import { userService } from "../services/index.js";
 import { userDTO } from "../dtos/index.js";
+import ApiError from "../errors/ApiError.js";
+import dotenv from "dotenv";
 
 class AuthController {
-  async signup(req, res) {
+  async signup(req, res, next) {
     try {
       const { fullname, email, password } = req.body;
 
-      if (!fullname || !email || !password)
-        return res.status(400).json({
-          errorMessage: "Fields are required",
-        });
+      if (!fullname || !email || !password) {
+        throw ApiError.BadRequest("Fullname, email, and password are required");
+      }
 
       const emailExists = await userService.userExists(email);
 
       if (emailExists) {
-        return res.status(409).json({
-          errorMessage: "The email address is already in use.",
-        });
+        throw ApiError.Conflict("The email address is already in use.");
       }
 
       const createdUser = await userService.createUser({
@@ -28,163 +27,153 @@ class AuthController {
       const userResponseDTO = userDTO.mapUserToUserResponseDTO(createdUser);
 
       return res.status(201).json({
+        status: "success",
         message: "Signup successful",
-        user: userResponseDTO,
+        data: userResponseDTO,
+        error: null,
       });
-    } catch (e) {
-      return res.status(500).json({
-        errorMessage: "Internal Server Error: Signup failed",
-      });
+    } catch (error) {
+      next(error);
     }
   }
 
-  async signin(req, res) {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        errorMessage: "Invalid email or password ",
-      });
-    }
-
+  async signin(req, res, next) {
     try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        throw ApiError.BadRequest("Invalid email or password");
+      }
+
       const user = await userService.getUserByEmail(email);
 
-      if (user) {
-        const match = user.comparePassword(password);
-
-        if (match) {
-          const accessToken = user.createAccessToken();
-          const refreshToken = await user.createRefreshToken();
-
-          res.cookie("jwt", refreshToken, {
-            httpOnly: true,
-            sameSite: "Strict",
-            secure: true,
-            maxAge: 24 * 60 * 60 * 1000,
-          });
-
-          return res.status(200).json({
-            message: "Signin successful",
-            accessToken,
-          });
-        } else {
-          console.log("Invalid email or password");
-          return res.status(401).json({
-            errorMessage: "Invalid email or password",
-          });
-        }
-      } else {
-        console.log("Invalid email or password");
-        return res.status(401).json({
-          errorMessage: "Invalid email or password",
-        });
+      if (!user) {
+        throw ApiError.Unauthorized("Invalid email or password");
       }
-    } catch (err) {
-      return res
-        .status(500)
-        .json({ errorMessage: "Internal Server Error: Signin failed" });
-    }
-  }
 
-  async refresh(req, res) {
-    let refreshToken;
+      const match = user.comparePassword(password);
 
-    if (req.cookies && req?.cookies?.jwt) {
-      refreshToken = req.cookies.jwt;
-    }
-
-    if (refreshToken) {
-      try {
-        const verifiedToken =
-          await userService.verifyRefreshToken(refreshToken);
-
-        if (!verifiedToken) {
-          return res.status(401).json({ errorMessage: "Unauthorized" });
-        }
-
-        const foundUser = await userService.getUserById(verifiedToken.user.id);
-
-        if (!foundUser) {
-          return res.status(401).json({ errorMessage: "Unauthorized" });
-        }
-
-        const newAccessToken = foundUser.createAccessToken();
-        const newRefreshToken = await foundUser.createRefreshToken();
-
-        // TODO set secure: true on production
-        res.cookie("jwt", newRefreshToken, {
-          httpOnly: true,
-          sameSite: "Strict",
-          secure: true,
-          maxAge: 24 * 60 * 60 * 1000,
-        });
-
-        return res.status(200).json({
-          statusCode: 200,
-          message: "refresh successful",
-          accessToken: newAccessToken,
-        });
-      } catch (err) {
-        console.log(err);
-        return res.status(401).json({ errorMessage: "Unauthorized" });
+      if (!match) {
+        throw ApiError.Unauthorized("Invalid email or password");
       }
-    }
 
-    return res.status(401).json({ errorMessage: "Unauthorized" });
+      const accessToken = user.createAccessToken();
+      const refreshToken = await user.createRefreshToken();
+
+      res.cookie("jwt", refreshToken, {
+        httpOnly: true,
+        sameSite: "Strict",
+        secure: true,
+        maxAge: 24 * 60 * 60 * 1000,
+      });
+
+      return res.status(200).json({
+        status: "success",
+        message: "Signin successful",
+        data: { accessToken },
+        error: null,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 
-  async signout(req, res) {
-    const cookies = req.cookies;
+  async refresh(req, res, next) {
+    try {
+      const refreshToken = req.cookies?.jwt;
 
-    if (!cookies?.jwt) {
-      return res.status(404).json({ errorMessage: "Not Found" });
+      if (!refreshToken) {
+        throw ApiError.Unauthorized("Refresh token is required");
+      }
+
+      const verifiedToken = await userService.verifyRefreshToken(refreshToken);
+
+      if (!verifiedToken) {
+        throw ApiError.Unauthorized("Invalid or expired refresh token");
+      }
+
+      const foundUser = await userService.getUserById(verifiedToken.user.id);
+
+      if (!foundUser) {
+        throw ApiError.Unauthorized("User not found");
+      }
+
+      const newAccessToken = foundUser.createAccessToken();
+      const newRefreshToken = await foundUser.createRefreshToken();
+
+      res.cookie("jwt", newRefreshToken, {
+        httpOnly: true,
+        sameSite: "Strict",
+        secure: true,
+        maxAge: 24 * 60 * 60 * 1000,
+      });
+
+      return res.status(200).json({
+        status: "success",
+        message: "Refresh successful",
+        data: { accessToken: newAccessToken },
+        error: null,
+      });
+    } catch (error) {
+      next(error);
     }
-
-    const verifiedToken = await userService.verifyRefreshToken(cookies.jwt);
-    console.log(verifiedToken);
-
-    if (!verifiedToken) {
-      return res.status(404).json({ errorMessage: "Not Found" });
-    }
-
-    const foundUser = await userService.getUserById(verifiedToken.user.id);
-
-    if (!foundUser) {
-      return res.status(404).json({ errorMessage: "Not Found" });
-    }
-
-    await foundUser.deleteRefreshToken();
-
-    // res.clearCookie("jwt", { httpOnly: true, sameSite: "strict", secure: true });
-    res.clearCookie("jwt", {
-      httpOnly: true,
-      sameSite: "Strict", // "strict",
-      secure: true,
-    });
-
-    return res.status(204).json({ message: "Signout successful" });
   }
 
-  async getAuthenticatedUser(req, res) {
+  async signout(req, res, next) {
+    try {
+      const refreshToken = req.cookies?.jwt;
+
+      if (!refreshToken) {
+        throw ApiError.NotFound("Refresh token not found");
+      }
+
+      const verifiedToken = await userService.verifyRefreshToken(refreshToken);
+
+      if (!verifiedToken) {
+        throw ApiError.NotFound("Invalid refresh token");
+      }
+
+      const foundUser = await userService.getUserById(verifiedToken.user.id);
+
+      if (!foundUser) {
+        throw ApiError.NotFound("User not found");
+      }
+
+      await foundUser.deleteRefreshToken();
+
+      res.clearCookie("jwt", {
+        httpOnly: true,
+        sameSite: "Strict",
+        secure: true,
+      });
+
+      return res.status(204).json({
+        status: "success",
+        message: "Signout successful",
+        data: null,
+        error: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAuthenticatedUser(req, res, next) {
     try {
       const authenticatedUser = userDTO.mapUserToUserResponseDTO(req.user);
 
       if (!authenticatedUser) {
-        return res.status(401).json({ errorMessage: "Unauthorized" });
+        throw ApiError.Unauthorized("User is not authenticated");
       }
 
       return res.status(200).json({
+        status: "success",
         message: "Authenticated user retrieved successfully",
-        user: authenticatedUser,
+        data: authenticatedUser,
+        error: null,
       });
     } catch (error) {
-      console.error(
-        `Error in AuthController.getAuthenticatedUser: ${error.message}`
-      );
-      return res.status(500).json({
-        errorMessage: "Internal Server Error",
-      });
+      next(error);
     }
   }
 }

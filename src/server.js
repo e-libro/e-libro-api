@@ -9,6 +9,8 @@ import { authRouter, bookRouter, userRouter } from "./routes/v1/index.js";
 import morgan from "morgan";
 import logger from "./logger/logger.js";
 
+import { apiErrorHandler } from "./middlewares/index.js";
+
 const ENV = process.env.NODE_ENV || "development";
 const CORS_ORIGIN = ENV === "production" ? process.env.CORS_ORIGIN : "*";
 const FORMAT = ENV === "production" ? "combined" : "dev";
@@ -45,12 +47,14 @@ server.use((req, res, next) => {
   });
 });
 
-server.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    errorMessage: "Internal Server Error: An unexpected error occurred",
-  });
-});
+server.use(apiErrorHandler);
+
+// server.use((err, req, res, next) => {
+//   console.error(err.stack);
+//   res.status(500).json({
+//     errorMessage: "Internal Server Error: An unexpected error occurred",
+//   });
+// });
 
 const startServer = async () => {
   try {

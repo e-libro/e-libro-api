@@ -17,7 +17,42 @@ class UserService {
   }
 
   async getAllUsers(filters, sortBy, page, limit) {
-    return await userRepository.findAllUsers(filters, sortBy, page, limit);
+    try {
+      // Validaciones de parámetros
+      if (!filters || typeof filters !== "object") {
+        throw new Error("Filters must be a valid object");
+      }
+
+      if (!sortBy || typeof sortBy !== "object") {
+        throw new Error("SortBy must be a valid object");
+      }
+
+      if (typeof page !== "number" || page < 0) {
+        throw new Error("Page must be a non-negative number");
+      }
+
+      if (typeof limit !== "number" || limit <= 0) {
+        throw new Error("Limit must be a positive number");
+      }
+
+      // Llamar al repositorio para obtener los usuarios
+      const users = await userRepository.findAllUsers(
+        filters,
+        sortBy,
+        page,
+        limit
+      );
+
+      // Validación de resultado
+      if (!users || users.length === 0) {
+        throw new Error("No users found with the provided filters");
+      }
+
+      return users;
+    } catch (error) {
+      console.error("Error in UserService.getAllUsers:", error.message);
+      throw error;
+    }
   }
 
   async getUserByEmail(email) {
@@ -34,37 +69,36 @@ class UserService {
     return user;
   }
 
-  async getUserById(id) {
-    if (!id) {
-      throw new Error("ID is required");
+  async getUserById(userId) {
+    if (!userId) {
+      throw new Error("User ID is required");
     }
 
-    const user = await userRepository.findUserById(id);
+    const user = await userRepository.findUserById(userId);
 
     if (!user) {
-      throw new Error(`User with ID ${id} not found`);
+      throw new Error(`User with ID ${userId} not found`);
     }
 
     return user;
   }
 
-  async updateUser(id, updates) {
-    if (!id || !updates || Object.keys(updates).length === 0) {
+  async updateUser(userId, updates) {
+    if (!userId || !updates || Object.keys(updates).length === 0) {
       throw new Error("ID and updates are required");
     }
 
-    return await userRepository.updateUser(id, updates);
+    return await userRepository.updateUser(userId, updates);
   }
 
-  async deleteUser(id) {
-    if (!id) {
+  async deleteUser(userId) {
+    if (!userId) {
       throw new Error("ID is required");
     }
 
-    // Elimina el usuario por ID
-    const deletedUser = await userRepository.deleteUser(id);
+    const deletedUser = await userRepository.deleteUser(userId);
     if (!deletedUser) {
-      throw new Error(`User with ID ${id} not found`);
+      throw new Error(`User with ID ${userId} not found`);
     }
 
     return deletedUser;
@@ -91,7 +125,7 @@ class UserService {
       }
       const user = await userRepository.verifyRefreshToken(token);
       if (!user) {
-        throw new Error("Invalid or expired refresh token");
+        throw new Error("InvaluserId or expired refresh token");
       }
       return user;
     } catch (error) {
@@ -109,7 +143,7 @@ class UserService {
       }
       const user = await userRepository.verifyAccessToken(token);
       if (!user) {
-        throw new Error("Invalid or expired access token");
+        throw new Error("InvaluserId or expired access token");
       }
       return user;
     } catch (error) {
@@ -119,7 +153,22 @@ class UserService {
   }
 
   async countUsers(filters) {
-    return await userRepository.countUsers(filters);
+    try {
+      if (!filters || typeof filters !== "object") {
+        throw new Error("Filters must be a valuserId object");
+      }
+
+      const totalUsers = await userRepository.countUsers(filters);
+
+      if (totalUsers === null || totalUsers === undefined) {
+        throw new Error("Failed to retrieve user count");
+      }
+
+      return totalUsers;
+    } catch (error) {
+      console.error("Error in UserService.countUsers:", error.message);
+      throw error;
+    }
   }
 }
 

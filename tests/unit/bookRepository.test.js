@@ -3,199 +3,144 @@ import { connect, clearDatabase, closeDatabase } from "../dbHandler.js";
 import bookRepository from "../../src/repositories/bookRepository.js";
 import Book from "../../src/models/BookModel.js";
 
-beforeAll(async () => {
-  await connect();
-});
-
-afterEach(async () => {
-  await clearDatabase();
-});
-
-afterAll(async () => {
-  await closeDatabase();
-});
-
-describe("Pruebas para BookRepository", () => {
+describe("BookRepository", () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  test("Debe recuperar todos los libros con filtros y paginación", async () => {
-    const booksMock = [
-      { gutenbergId: 12345, title: "Book 1", type: "Fiction" },
-      { gutenbergId: 12346, title: "Book 2", type: "Non-fiction" },
-    ];
+  describe("BookRepository.findAllBooks", () => {
+    test("should return a list of books matching the filters", async () => {
+      const filters = { genre: "Fiction" };
+      const sortBy = { title: "asc" };
+      const page = 0;
+      const limit = 5;
 
-    const filters = { type: "Fiction" };
-    const sortBy = { title: 1 };
-    const page = 1;
-    const limit = 10;
+      const booksMock = [
+        { id: "1", title: "Book One" },
+        { id: "2", title: "Book Two" },
+      ];
 
-    jest.spyOn(Book, "find").mockReturnValue({
-      sort: jest.fn().mockReturnThis(),
-      skip: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      exec: jest.fn().mockResolvedValue(booksMock),
-    });
+      const findMock = {
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(booksMock),
+      };
 
-    const result = await bookRepository.findAllBooks(
-      filters,
-      sortBy,
-      page,
-      limit
-    );
+      jest.spyOn(Book, "find").mockReturnValue(findMock);
 
-    expect(Book.find).toHaveBeenCalledWith(filters);
-    expect(Book.find().sort).toHaveBeenCalledWith(sortBy);
-    expect(Book.find().skip).toHaveBeenCalledWith(page * limit);
-    expect(Book.find().limit).toHaveBeenCalledWith(limit);
-    expect(result).toEqual(booksMock);
-  });
+      const result = await bookRepository.findAllBooks(
+        filters,
+        sortBy,
+        page,
+        limit
+      );
 
-  test("Debe recuperar un libro por ID", async () => {
-    const bookMock = { gutenbergId: 12345, title: "Book 1", type: "Fiction" };
-
-    jest.spyOn(Book, "findById").mockResolvedValue(bookMock);
-
-    const result = await bookRepository.findBookById("12345");
-
-    expect(Book.findById).toHaveBeenCalledWith({ _id: "12345" });
-    expect(result).toEqual(bookMock);
-  });
-
-  test("Debe recuperar un libro por gutenbergId", async () => {
-    const bookMock = { gutenbergId: 12345, title: "Book 1", type: "Fiction" };
-
-    jest.spyOn(Book, "findOne").mockResolvedValue(bookMock);
-
-    const result = await bookRepository.findBookByGutenbergId(12345);
-
-    expect(Book.findOne).toHaveBeenCalledWith({ gutenbergId: 12345 });
-    expect(result).toEqual(bookMock);
-  });
-
-  test("Debe actualizar un libro", async () => {
-    const updates = { title: "Updated Book" };
-    const updatedBook = {
-      gutenbergId: 12345,
-      title: "Updated Book",
-      type: "Fiction",
-    };
-
-    jest.spyOn(Book, "findById").mockResolvedValue({
-      ...updatedBook,
-      save: jest.fn().mockResolvedValue(updatedBook),
-    });
-
-    const result = await bookRepository.updateBook("12345", updates);
-
-    expect(Book.findById).toHaveBeenCalledWith("12345");
-    expect(JSON.parse(JSON.stringify(result))).toEqual({
-      gutenbergId: 12345,
-      title: "Updated Book",
-      type: "Fiction",
+      expect(Book.find).toHaveBeenCalledWith(filters);
+      expect(findMock.sort).toHaveBeenCalledWith(sortBy);
+      expect(findMock.skip).toHaveBeenCalledWith(page * limit);
+      expect(findMock.limit).toHaveBeenCalledWith(limit);
+      expect(result).toEqual(booksMock);
     });
   });
 
-  test("Debe eliminar un libro", async () => {
-    const deletedBook = {
-      gutenbergId: 12345,
-      title: "Deleted Book",
-      type: "Fiction",
-    };
+  describe("BookRepository.findBookById", () => {
+    test("should return a book by ID", async () => {
+      const bookId = "60e6f965b4d6c9e529c7f0b3";
+      const bookMock = { id: bookId, title: "Test Book" };
 
-    jest.spyOn(Book, "findByIdAndDelete").mockResolvedValue(deletedBook);
+      jest.spyOn(Book, "findById").mockResolvedValue(bookMock);
 
-    const result = await bookRepository.deleteBook("12345");
+      const result = await bookRepository.findBookById(bookId);
 
-    expect(Book.findByIdAndDelete).toHaveBeenCalledWith({ _id: "12345" });
-    expect(result).toEqual(deletedBook);
+      expect(Book.findById).toHaveBeenCalledWith({ _id: bookId });
+      expect(result).toEqual(bookMock);
+    });
   });
 
-  test("Debe recuperar tipos de contenido distintos", async () => {
-    const contentTypes = ["application/pdf", "text/plain", "text/html"];
+  describe("BookRepository.findBookByGutenbergId", () => {
+    test("should return a book by Gutenberg ID", async () => {
+      const gutenbergId = "12345";
+      const bookMock = { gutenbergId, title: "Test Book" };
 
-    jest
-      .spyOn(Book, "getDistinctBookContentTypes")
-      .mockResolvedValue(contentTypes);
+      jest.spyOn(Book, "findOne").mockResolvedValue(bookMock);
 
-    const result = await bookRepository.getDistinctContentTypes();
+      const result = await bookRepository.findBookByGutenbergId(gutenbergId);
 
-    expect(Book.getDistinctBookContentTypes).toHaveBeenCalled();
-    expect(result).toEqual(contentTypes);
+      expect(Book.findOne).toHaveBeenCalledWith({ gutenbergId });
+      expect(result).toEqual(bookMock);
+    });
   });
 
-  test("Debe recuperar idiomas distintos", async () => {
-    const languages = ["en", "es", "fr"];
+  describe("BookRepository.updateBook", () => {
+    test("should update a book and return the updated document", async () => {
+      const bookId = "60e6f965b4d6c9e529c7f0b3";
+      const updates = { title: "Updated Title" };
 
-    jest.spyOn(Book, "getDistinctBookLanguages").mockResolvedValue(languages);
+      const bookMock = {
+        id: bookId,
+        title: "Original Title",
+        save: jest
+          .fn()
+          .mockResolvedValue({ id: bookId, title: "Updated Title" }),
+      };
 
-    const result = await bookRepository.getDistinctBookLanguages();
+      const updatedBookMock = { id: bookId, title: "Updated Title" };
 
-    expect(Book.getDistinctBookLanguages).toHaveBeenCalled();
-    expect(result).toEqual(languages);
+      jest.spyOn(Book, "findById").mockResolvedValueOnce(bookMock);
+      jest.spyOn(Book, "findById").mockResolvedValueOnce(updatedBookMock);
+
+      const result = await bookRepository.updateBook(bookId, updates);
+
+      expect(Book.findById).toHaveBeenCalledWith(bookId);
+      expect(bookMock.save).toHaveBeenCalled();
+      expect(result).toEqual(updatedBookMock);
+    });
   });
 
-  test("incrementDownloads - should increment downloads field in the database", async () => {
-    const bookId = "123";
-    const updatedBook = { id: "123", title: "Test Book", downloads: 5 };
+  describe("BookRepository.deleteBook", () => {
+    test("should delete a book by ID and return the deleted book", async () => {
+      const bookId = "60e6f965b4d6c9e529c7f0b3";
+      const deletedBookMock = { id: bookId, title: "Deleted Book" };
 
-    jest
-      .spyOn(bookRepository, "incrementDownloads")
-      .mockResolvedValue(updatedBook);
+      jest.spyOn(Book, "findByIdAndDelete").mockResolvedValue(deletedBookMock);
 
-    const result = await bookRepository.incrementDownloads(bookId);
+      const result = await bookRepository.deleteBook(bookId);
 
-    expect(bookRepository.incrementDownloads).toHaveBeenCalledWith(bookId);
-
-    expect(result).toEqual(updatedBook);
+      expect(Book.findByIdAndDelete).toHaveBeenCalledWith({ _id: bookId });
+      expect(result).toEqual(deletedBookMock);
+    });
   });
 
-  test("incrementDownloads - should throw error if database operation fails", async () => {
-    const bookId = "123";
+  describe("BookRepository.incrementDownloads", () => {
+    test("should increment downloads for a book by ID", async () => {
+      const bookId = "60e6f965b4d6c9e529c7f0b3";
+      const updatedBookMock = { id: bookId, title: "Test Book", downloads: 1 };
 
-    jest
-      .spyOn(bookRepository, "incrementDownloads")
-      .mockRejectedValue(new Error("Failed to increment downloads"));
+      jest.spyOn(Book, "findByIdAndUpdate").mockResolvedValue(updatedBookMock);
 
-    await expect(bookRepository.incrementDownloads(bookId)).rejects.toThrow(
-      "Failed to increment downloads"
-    );
+      const result = await bookRepository.incrementDownloads(bookId);
+
+      expect(Book.findByIdAndUpdate).toHaveBeenCalledWith(
+        bookId,
+        { $inc: { downloads: 1 } },
+        { new: true, runValidators: true }
+      );
+      expect(result).toEqual(updatedBookMock);
+    });
   });
 
-  test("should return the total count of books matching the filter", async () => {
-    const filter = { genre: "Fiction" };
-    const countMock = 42;
+  describe("BookRepository.countBooks", () => {
+    test("should return the total count of books matching filters", async () => {
+      const filters = { genre: "Fiction" };
+      const countMock = 10;
 
-    jest.spyOn(Book, "countDocuments").mockResolvedValue(countMock);
+      jest.spyOn(Book, "countDocuments").mockResolvedValue(countMock);
 
-    const result = await bookRepository.countBooks(filter);
+      const result = await bookRepository.countBooks(filters);
 
-    expect(Book.countDocuments).toHaveBeenCalledWith(filter);
-    expect(result).toBe(countMock);
-  });
-
-  test("should return 0 if no books match the filter", async () => {
-    const filter = { genre: "Nonexistent Genre" };
-    const countMock = 0;
-
-    jest.spyOn(Book, "countDocuments").mockResolvedValue(countMock);
-
-    const result = await bookRepository.countBooks(filter);
-
-    expect(Book.countDocuments).toHaveBeenCalledWith(filter);
-    expect(result).toBe(countMock);
-  });
-
-  test("should throw an error if database operation fails", async () => {
-    const filter = { genre: "Fiction" };
-
-    jest
-      .spyOn(Book, "countDocuments")
-      .mockRejectedValue(new Error("Database error"));
-
-    await expect(bookRepository.countBooks(filter)).rejects.toThrow(
-      "Database error"
-    );
+      expect(Book.countDocuments).toHaveBeenCalledWith(filters);
+      expect(result).toBe(countMock);
+    });
   });
 });

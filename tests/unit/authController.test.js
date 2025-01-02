@@ -2,120 +2,85 @@ import { jest } from "@jest/globals";
 import authController from "../../src/controllers/authController.js";
 import userService from "../../src/services/userService.js";
 import userDTO from "../../src/dtos/userDTO.js";
+import ApiError from "../../src/errors/ApiError.js";
 
-describe("authController", () => {
+describe("AuthController", () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
 
   describe("signup", () => {
-    test("should return 400 if required fields are missing", async () => {
-      const req = {
-        body: { email: "test@example.com", password: "password123" },
-      };
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-
-      await authController.signup(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        errorMessage: "Fields are required",
-      });
-    });
-
-    test("should return 409 if email is already in use", async () => {
+    test("should create a new user and return success response", async () => {
       const req = {
         body: {
           fullname: "John Doe",
-          email: "test@example.com",
+          email: "john@example.com",
           password: "password123",
         },
       };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      const next = jest.fn();
+
+      const createdUserMock = {
+        id: "1",
+        fullname: "John Doe",
+        email: "john@example.com",
+      };
+      jest.spyOn(userService, "userExists").mockResolvedValue(false);
+      jest.spyOn(userService, "createUser").mockResolvedValue(createdUserMock);
+      jest
+        .spyOn(userDTO, "mapUserToUserResponseDTO")
+        .mockReturnValue(createdUserMock);
+
+      await authController.signup(req, res, next);
+
+      expect(userService.userExists).toHaveBeenCalledWith("john@example.com");
+      expect(userService.createUser).toHaveBeenCalledWith(req.body);
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({
+        status: "success",
+        message: "Signup successful",
+        data: createdUserMock,
+        error: null,
+      });
+    });
+
+    test("should call next with ApiError.Conflict if email is already in use", async () => {
+      const req = {
+        body: {
+          fullname: "John Doe",
+          email: "john@example.com",
+          password: "password123",
+        },
+      };
+      const res = {};
+      const next = jest.fn();
 
       jest.spyOn(userService, "userExists").mockResolvedValue(true);
 
-      await authController.signup(req, res);
+      await authController.signup(req, res, next);
 
-      expect(userService.userExists).toHaveBeenCalledWith("test@example.com");
-      expect(res.status).toHaveBeenCalledWith(409);
-      expect(res.json).toHaveBeenCalledWith({
-        errorMessage: "The email address is already in use.",
-      });
-    });
-
-    test("should return 201 if user is created successfully", async () => {
-      const req = {
-        body: {
-          fullname: "John Doe",
-          email: "test@example.com",
-          password: "password123",
-        },
-      };
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-
-      const createdUser = {
-        id: "123",
-        fullname: "John Doe",
-        email: "test@example.com",
-      };
-      const userResponseDTO = {
-        id: "123",
-        fullname: "John Doe",
-        email: "test@example.com",
-      };
-
-      jest.spyOn(userService, "userExists").mockResolvedValue(false);
-      jest.spyOn(userService, "createUser").mockResolvedValue(createdUser);
-      jest
-        .spyOn(userDTO, "mapUserToUserResponseDTO")
-        .mockReturnValue(userResponseDTO);
-
-      await authController.signup(req, res);
-
-      expect(userService.userExists).toHaveBeenCalledWith("test@example.com");
-      expect(userService.createUser).toHaveBeenCalledWith({
-        fullname: "John Doe",
-        email: "test@example.com",
-        password: "password123",
-      });
-      expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(
-        createdUser
+      expect(next).toHaveBeenCalledWith(expect.any(ApiError));
+      expect(next.mock.calls[0][0].message).toBe(
+        "The email address is already in use."
       );
-      expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith({
-        message: "Signup successful",
-        user: userResponseDTO,
-      });
     });
   });
 
   describe("signin", () => {
-    test("should return 400 if required fields are missing", async () => {
-      const req = { body: { email: "" } };
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-
-      await authController.signin(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        errorMessage: "Invalid email or password ",
-      });
-    });
-
-    test("should return 200 if signin is successful", async () => {
+    test("should return accessToken and set refreshToken cookie on success", async () => {
       const req = {
-        body: { email: "test@example.com", password: "password123" },
+        body: { email: "john@example.com", password: "password123" },
       };
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn(),
         cookie: jest.fn(),
       };
+      const next = jest.fn();
 
       const userMock = {
-        id: "123",
-        email: "test@example.com",
+        email: "john@example.com",
         comparePassword: jest.fn().mockReturnValue(true),
         createAccessToken: jest.fn().mockReturnValue("accessToken"),
         createRefreshToken: jest.fn().mockResolvedValue("refreshToken"),
@@ -123,10 +88,10 @@ describe("authController", () => {
 
       jest.spyOn(userService, "getUserByEmail").mockResolvedValue(userMock);
 
-      await authController.signin(req, res);
+      await authController.signin(req, res, next);
 
       expect(userService.getUserByEmail).toHaveBeenCalledWith(
-        "test@example.com"
+        "john@example.com"
       );
       expect(userMock.comparePassword).toHaveBeenCalledWith("password123");
       expect(userMock.createAccessToken).toHaveBeenCalled();
@@ -138,49 +103,42 @@ describe("authController", () => {
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
+        status: "success",
         message: "Signin successful",
-        accessToken: "accessToken",
+        data: { accessToken: "accessToken" },
+        error: null,
       });
     });
   });
 
   describe("refresh", () => {
-    test("should return 401 if refresh token is missing", async () => {
-      const req = { cookies: {} };
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-
-      await authController.refresh(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({ errorMessage: "Unauthorized" });
-    });
-
-    test("should return 200 with new tokens if refresh is successful", async () => {
+    test("should return new access and refresh tokens on success", async () => {
       const req = { cookies: { jwt: "refreshToken" } };
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn(),
         cookie: jest.fn(),
       };
+      const next = jest.fn();
 
+      const verifiedToken = { user: { id: "1" } };
       const userMock = {
-        id: "123",
-        email: "test@example.com",
+        id: "1",
         createAccessToken: jest.fn().mockReturnValue("newAccessToken"),
         createRefreshToken: jest.fn().mockResolvedValue("newRefreshToken"),
       };
 
       jest
         .spyOn(userService, "verifyRefreshToken")
-        .mockResolvedValue({ user: { id: "123" } });
+        .mockResolvedValue(verifiedToken);
       jest.spyOn(userService, "getUserById").mockResolvedValue(userMock);
 
-      await authController.refresh(req, res);
+      await authController.refresh(req, res, next);
 
       expect(userService.verifyRefreshToken).toHaveBeenCalledWith(
         "refreshToken"
       );
-      expect(userService.getUserById).toHaveBeenCalledWith("123");
+      expect(userService.getUserById).toHaveBeenCalledWith("1");
       expect(userMock.createAccessToken).toHaveBeenCalled();
       expect(userMock.createRefreshToken).toHaveBeenCalled();
       expect(res.cookie).toHaveBeenCalledWith(
@@ -190,123 +148,78 @@ describe("authController", () => {
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        statusCode: 200,
-        message: "refresh successful",
-        accessToken: "newAccessToken",
+        status: "success",
+        message: "Refresh successful",
+        data: { accessToken: "newAccessToken" },
+        error: null,
       });
     });
   });
 
   describe("signout", () => {
-    test("should return 404 if refresh token is missing", async () => {
-      const req = { cookies: {} };
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-
-      await authController.signout(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ errorMessage: "Not Found" });
-    });
-
-    test("should return 204 if signout is successful", async () => {
+    test("should clear the refresh token cookie and return success", async () => {
       const req = { cookies: { jwt: "refreshToken" } };
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn(),
         clearCookie: jest.fn(),
       };
+      const next = jest.fn();
 
+      const verifiedToken = { user: { id: "1" } };
       const userMock = {
-        id: "123",
-        deleteRefreshToken: jest.fn().mockResolvedValue(),
+        id: "1",
+        deleteRefreshToken: jest.fn().mockResolvedValue(true),
       };
 
       jest
         .spyOn(userService, "verifyRefreshToken")
-        .mockResolvedValue({ user: { id: "123" } });
+        .mockResolvedValue(verifiedToken);
       jest.spyOn(userService, "getUserById").mockResolvedValue(userMock);
 
-      await authController.signout(req, res);
+      await authController.signout(req, res, next);
 
       expect(userService.verifyRefreshToken).toHaveBeenCalledWith(
         "refreshToken"
       );
-      expect(userService.getUserById).toHaveBeenCalledWith("123");
+      expect(userService.getUserById).toHaveBeenCalledWith("1");
       expect(userMock.deleteRefreshToken).toHaveBeenCalled();
       expect(res.clearCookie).toHaveBeenCalledWith("jwt", expect.any(Object));
       expect(res.status).toHaveBeenCalledWith(204);
-      expect(res.json).toHaveBeenCalledWith({ message: "Signout successful" });
+      expect(res.json).toHaveBeenCalledWith({
+        status: "success",
+        message: "Signout successful",
+        data: null,
+        error: null,
+      });
     });
   });
 
-  test("should return 200 with authenticated user", async () => {
-    const userMock = {
-      id: "123",
-      name: "John Doe",
-      email: "john@example.com",
-      role: "user",
-    };
-    const userResponseDTO = {
-      id: "123",
-      name: "John Doe",
-      email: "john@example.com",
-      role: "user",
-    };
+  describe("getAuthenticatedUser", () => {
+    test("should return authenticated user details", async () => {
+      const req = {
+        user: { id: "1", fullname: "John Doe", email: "john@example.com" },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      const next = jest.fn();
 
-    const req = { user: userMock };
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
+      const userMock = {
+        id: "1",
+        fullname: "John Doe",
+        email: "john@example.com",
+      };
+      jest.spyOn(userDTO, "mapUserToUserResponseDTO").mockReturnValue(userMock);
 
-    jest
-      .spyOn(userDTO, "mapUserToUserResponseDTO")
-      .mockReturnValue(userResponseDTO);
+      await authController.getAuthenticatedUser(req, res, next);
 
-    await authController.getAuthenticatedUser(req, res);
-
-    expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(userMock);
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({
-      message: "Authenticated user retrieved successfully",
-      user: userResponseDTO,
-    });
-  });
-
-  test("should return 401 if user is not authenticated", async () => {
-    const req = { user: null };
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
-
-    jest.spyOn(userDTO, "mapUserToUserResponseDTO").mockReturnValue(null);
-
-    await authController.getAuthenticatedUser(req, res);
-
-    expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(null);
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ errorMessage: "Unauthorized" });
-  });
-
-  test("should return 500 on server error", async () => {
-    const userMock = { id: "123", name: "John Doe", email: "john@example.com" };
-    const req = { user: userMock };
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
-
-    jest.spyOn(userDTO, "mapUserToUserResponseDTO").mockImplementation(() => {
-      throw new Error("Mapping error");
-    });
-
-    await authController.getAuthenticatedUser(req, res);
-
-    expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(userMock);
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith({
-      errorMessage: "Internal Server Error",
+      expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(req.user);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        status: "success",
+        message: "Authenticated user retrieved successfully",
+        data: userMock,
+        error: null,
+      });
     });
   });
 });

@@ -32,7 +32,7 @@ class BookDTO {
       this.authors = authors;
       this.cover = cover;
       this.content = content;
-      this.donwloads = downloads;
+      this.downloads = downloads;
     }
   };
 
