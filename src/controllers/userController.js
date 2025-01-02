@@ -1,6 +1,7 @@
 import { userService } from "../services/index.js";
 import { userDTO } from "../dtos/index.js";
 import ApiError from "../errors/ApiError.js";
+import mongoose from "mongoose";
 
 class UserController {
   async createUser(req, res, next) {
@@ -86,8 +87,8 @@ class UserController {
     try {
       const { id } = req.params;
 
-      if (!id) {
-        throw ApiError.BadRequest("User ID is required");
+      if (!id || !mongoose.isValidObjectId(id)) {
+        throw ApiError.BadRequest("Valid User ID is required");
       }
 
       const user = await userService.getUserById(id);
@@ -114,7 +115,7 @@ class UserController {
       const { id } = req.params;
       const updates = req.body;
 
-      if (!id) {
+      if (!id || !mongoose.isValidObjectId(id)) {
         throw ApiError.BadRequest("User ID is required");
       }
 
@@ -127,6 +128,10 @@ class UserController {
       }
 
       const updatedUser = await userService.updateUser(id, updates);
+
+      if (!updatedUser) {
+        throw ApiError.NotFound(`User with ID ${id} not found`);
+      }
 
       return res.status(200).json({
         status: "success",
@@ -143,8 +148,8 @@ class UserController {
     try {
       const { id } = req.params;
 
-      if (!id) {
-        throw ApiError.BadRequest("User ID is required");
+      if (!id || !mongoose.isValidObjectId(id)) {
+        throw ApiError.BadRequest("Valid User ID is required");
       }
 
       const deletedUser = await userService.deleteUser(id);

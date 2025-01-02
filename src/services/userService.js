@@ -1,4 +1,5 @@
 import { userRepository } from "../repositories/index.js";
+import mongoose from "mongoose";
 
 class UserService {
   async createUser(user) {
@@ -70,14 +71,14 @@ class UserService {
   }
 
   async getUserById(userId) {
-    if (!userId) {
-      throw new Error("User ID is required");
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      throw new Error("Valid ID is required");
     }
 
     const user = await userRepository.findUserById(userId);
 
     if (!user) {
-      throw new Error(`User with ID ${userId} not found`);
+      return null;
     }
 
     return user;

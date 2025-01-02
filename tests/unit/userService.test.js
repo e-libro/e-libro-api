@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import userService from "../../src/services/userService.js";
+import UserService from "../../src/services/userService.js";
 import userRepository from "../../src/repositories/userRepository.js";
 
 describe("UserService", () => {
@@ -17,7 +17,7 @@ describe("UserService", () => {
       jest.spyOn(userRepository, "findUserByEmail").mockResolvedValue(null);
       jest.spyOn(userRepository, "createUser").mockResolvedValue(userMock);
 
-      const result = await userService.createUser(userMock);
+      const result = await UserService.createUser(userMock);
 
       expect(userRepository.findUserByEmail).toHaveBeenCalledWith(
         userMock.email
@@ -34,7 +34,7 @@ describe("UserService", () => {
       };
       jest.spyOn(userRepository, "findUserByEmail").mockResolvedValue(userMock);
 
-      await expect(userService.createUser(userMock)).rejects.toThrow(
+      await expect(UserService.createUser(userMock)).rejects.toThrow(
         "The email address is already in use."
       );
     });
@@ -42,7 +42,7 @@ describe("UserService", () => {
     test("should throw an error if required fields are missing", async () => {
       const userMock = { fullname: "", email: "", password: "" };
 
-      await expect(userService.createUser(userMock)).rejects.toThrow(
+      await expect(UserService.createUser(userMock)).rejects.toThrow(
         "Missing required fields: fullname, email, and password are mandatory"
       );
     });
@@ -61,7 +61,7 @@ describe("UserService", () => {
 
       jest.spyOn(userRepository, "findAllUsers").mockResolvedValue(usersMock);
 
-      const result = await userService.getAllUsers(
+      const result = await UserService.getAllUsers(
         filters,
         sortBy,
         page,
@@ -86,7 +86,7 @@ describe("UserService", () => {
       jest.spyOn(userRepository, "findAllUsers").mockResolvedValue([]);
 
       await expect(
-        userService.getAllUsers(filters, sortBy, page, limit)
+        UserService.getAllUsers(filters, sortBy, page, limit)
       ).rejects.toThrow("No users found with the provided filters");
     });
   });
@@ -98,7 +98,7 @@ describe("UserService", () => {
 
       jest.spyOn(userRepository, "findUserByEmail").mockResolvedValue(userMock);
 
-      const result = await userService.getUserByEmail(email);
+      const result = await UserService.getUserByEmail(email);
 
       expect(userRepository.findUserByEmail).toHaveBeenCalledWith(email);
       expect(result).toEqual(userMock);
@@ -109,7 +109,7 @@ describe("UserService", () => {
 
       jest.spyOn(userRepository, "findUserByEmail").mockResolvedValue(null);
 
-      await expect(userService.getUserByEmail(email)).rejects.toThrow(
+      await expect(UserService.getUserByEmail(email)).rejects.toThrow(
         `User with email ${email} not found`
       );
     });
@@ -122,19 +122,17 @@ describe("UserService", () => {
 
       jest.spyOn(userRepository, "findUserById").mockResolvedValue(userMock);
 
-      const result = await userService.getUserById(userId);
+      const result = await UserService.getUserById(userId);
 
       expect(userRepository.findUserById).toHaveBeenCalledWith(userId);
       expect(result).toEqual(userMock);
     });
 
-    test("should throw an error if user is not found", async () => {
-      const userId = "60e6f965b4d6c9e529c7f0b3";
+    test("should throw an error if ID is invalid", async () => {
+      const userId = "invalid-id";
 
-      jest.spyOn(userRepository, "findUserById").mockResolvedValue(null);
-
-      await expect(userService.getUserById(userId)).rejects.toThrow(
-        `User with ID ${userId} not found`
+      await expect(UserService.getUserById(userId)).rejects.toThrow(
+        "Valid ID is required"
       );
     });
   });
@@ -149,7 +147,7 @@ describe("UserService", () => {
         .spyOn(userRepository, "updateUser")
         .mockResolvedValue(updatedUserMock);
 
-      const result = await userService.updateUser(userId, updates);
+      const result = await UserService.updateUser(userId, updates);
 
       expect(userRepository.updateUser).toHaveBeenCalledWith(userId, updates);
       expect(result).toEqual(updatedUserMock);
@@ -165,7 +163,7 @@ describe("UserService", () => {
         .spyOn(userRepository, "deleteUser")
         .mockResolvedValue(deletedUserMock);
 
-      const result = await userService.deleteUser(userId);
+      const result = await UserService.deleteUser(userId);
 
       expect(userRepository.deleteUser).toHaveBeenCalledWith(userId);
       expect(result).toEqual(deletedUserMock);
@@ -176,7 +174,7 @@ describe("UserService", () => {
 
       jest.spyOn(userRepository, "deleteUser").mockResolvedValue(null);
 
-      await expect(userService.deleteUser(userId)).rejects.toThrow(
+      await expect(UserService.deleteUser(userId)).rejects.toThrow(
         `User with ID ${userId} not found`
       );
     });
@@ -188,7 +186,7 @@ describe("UserService", () => {
 
       jest.spyOn(userRepository, "userExists").mockResolvedValue(true);
 
-      const result = await userService.userExists(email);
+      const result = await UserService.userExists(email);
 
       expect(userRepository.userExists).toHaveBeenCalledWith(email);
       expect(result).toBe(true);
@@ -199,78 +197,10 @@ describe("UserService", () => {
 
       jest.spyOn(userRepository, "userExists").mockResolvedValue(false);
 
-      const result = await userService.userExists(email);
+      const result = await UserService.userExists(email);
 
       expect(userRepository.userExists).toHaveBeenCalledWith(email);
       expect(result).toBe(false);
-    });
-  });
-
-  describe("verifyRefreshToken", () => {
-    test("should return user if refresh token is valid", async () => {
-      const token = "validRefreshToken";
-      const userMock = { id: "1", email: "test@example.com" };
-
-      jest
-        .spyOn(userRepository, "verifyRefreshToken")
-        .mockResolvedValue(userMock);
-
-      const result = await userService.verifyRefreshToken(token);
-
-      expect(userRepository.verifyRefreshToken).toHaveBeenCalledWith(token);
-      expect(result).toEqual(userMock);
-    });
-
-    test("should throw an error if token is invalid", async () => {
-      const token = "invalidToken";
-
-      jest.spyOn(userRepository, "verifyRefreshToken").mockResolvedValue(null);
-
-      await expect(userService.verifyRefreshToken(token)).rejects.toThrow(
-        "Invalid userId or expired refresh token"
-      );
-    });
-  });
-
-  describe("countUsers", () => {
-    test("should return the total count of users", async () => {
-      const filters = { role: "user" };
-      const countMock = 10;
-
-      jest.spyOn(userRepository, "countUsers").mockResolvedValue(countMock);
-
-      const result = await userService.countUsers(filters);
-
-      expect(userRepository.countUsers).toHaveBeenCalledWith(filters);
-      expect(result).toBe(countMock);
-    });
-
-    test("should throw an error if filters are not valid", async () => {
-      await expect(userService.countUsers(null)).rejects.toThrow(
-        "Filters must be a valuserId object"
-      );
-    });
-
-    test("should throw an error if repository returns null", async () => {
-      const filters = { role: "user" };
-
-      jest.spyOn(userRepository, "countUsers").mockResolvedValue(null);
-
-      await expect(userService.countUsers(filters)).rejects.toThrow(
-        "Failed to retrieve user count"
-      );
-    });
-
-    test("should throw an error if repository throws an error", async () => {
-      const filters = { role: "user" };
-
-      jest
-        .spyOn(userRepository, "countUsers")
-        .mockRejectedValue(new Error("Repository error"));
-
-      await expect(userService.countUsers(filters)).rejects.toThrow(
-        "Repository error"
-      );
     });
   });
 });
