@@ -30,6 +30,6 @@ authRouter
   .get(authMiddleware.verifyToken, authController.signout);
 authRouter
   .route("/v1/auth/me")
-  .get(authMiddleware.verifyToken, authController.getAuthenticatedUser);
+  .post(authMiddleware.verifyToken, authController.getAuthenticatedUser);
 
 export default authRouter;

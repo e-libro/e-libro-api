@@ -12,10 +12,12 @@ import ApiError from "./errors/ApiError.js";
 import { apiErrorHandler } from "./middlewares/index.js";
 
 const ENV = process.env.NODE_ENV || "development";
-const CORS_ORIGIN = ENV === "production" ? process.env.CORS_ORIGIN : "*";
+const CORS_ORIGIN = process.env.CORS_ORIGIN;
 const FORMAT = ENV === "production" ? "combined" : "dev";
 const PORT = process.env.PORT || 8083;
 const DB_URL = process.env.DB_URL || "mongodb://localhost:27017/e-libro";
+
+console.log("CORS_ORIGIN", CORS_ORIGIN);
 
 let httpServer;
 
