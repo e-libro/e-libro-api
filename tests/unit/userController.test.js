@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
-import UserController from "../../src/controllers/UserController.js";
-import { userService } from "../../src/services/index.js";
-import { userDTO } from "../../src/dtos/index.js";
+import UserController from "../../src/controllers/userController.js";
+import userService from "../../src/services/userService.js";
+import userDTO from "../../src/dtos/userDTO.js";
 import ApiError from "../../src/errors/ApiError.js";
 import mongoose from "mongoose";
 
