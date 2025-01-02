@@ -1,4 +1,5 @@
 import * as yup from "yup";
+import ApiError from "../errors/ApiError.js";
 
 export const RequestSourceEnum = Object.freeze({
   BODY: "body",
@@ -21,10 +22,7 @@ export const validateRequest = (schema, source = RequestSourceEnum.BODY) => {
       await schema.validate(dataToValidate, { abortEarly: false }); // Validación estricta
       next();
     } catch (error) {
-      console.error(error);
-      return res.status(500).json({
-        errors: error.errors,
-      });
+      next(ApiError.BadRequest(error.errors));
     }
   };
 };
