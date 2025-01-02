@@ -56,28 +56,26 @@ export const verifyRole = (roles = []) => {
   return (req, res, next) => {
     try {
       if (!req?.user?.role) {
-        return res.status(403).json({
-          statusCode: 403,
-          message: "Forbidden",
-          error: "You do not have permission to access this resource",
-        });
+        next(
+          ApiError.Forbidden(
+            "You do not have permission to access this resource"
+          )
+        );
       }
 
       const hasPermission = roles.some((role) => role === req.user.role);
       if (!hasPermission) {
-        return res.status(403).json({
-          statusCode: 403,
-          message: "Forbidden",
-          error: "You do not have permission to access this resource",
-        });
+        next(
+          ApiError.Forbidden(
+            "You do not have permission to access this resource"
+          )
+        );
       }
 
       next();
     } catch (err) {
       console.error("Error in verifyRole middleware:", err.message);
-      return res.status(500).json({
-        errorMessage: "Internal Server Error",
-      });
+      next(ApiError.InternalServerError("Internal Server Error"));
     }
   };
 };
