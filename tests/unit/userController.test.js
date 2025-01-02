@@ -170,14 +170,26 @@ describe("UserController", () => {
   describe("updateUser", () => {
     test("should update a user and return the updated document", async () => {
       req.params.id = "60e6f965b4d6c9e529c7f0b3";
-      req.body = { fullname: "Updated User" };
+      req.body = { fullname: "Updated User", role: "admin" };
       const updatedUserMock = {
         id: "60e6f965b4d6c9e529c7f0b3",
         fullname: "Updated User",
-        role: "user",
+        email: "test@example.com",
+        role: "admin",
+        createdAt: "2023-01-01T00:00:00Z",
+      };
+      const userResponseDTO = {
+        id: "60e6f965b4d6c9e529c7f0b3",
+        fullname: "Updated User",
+        email: "test@example.com",
+        role: "admin",
+        createdAt: "2023-01-01T00:00:00Z",
       };
 
       jest.spyOn(userService, "updateUser").mockResolvedValue(updatedUserMock);
+      jest
+        .spyOn(userDTO, "mapUserToUserResponseDTO")
+        .mockReturnValue(userResponseDTO);
 
       await UserController.updateUser(req, res, next);
 
@@ -185,13 +197,55 @@ describe("UserController", () => {
         req.params.id,
         req.body
       );
+      expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(
+        updatedUserMock
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         status: "success",
         message: "User updated successfully",
-        data: updatedUserMock,
+        data: userResponseDTO,
         error: null,
       });
+    });
+
+    test("should call next with an error if ID is invalid", async () => {
+      req.params.id = "invalid-id";
+      req.body = { fullname: "Updated User" };
+
+      await UserController.updateUser(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        ApiError.BadRequest("User ID is required")
+      );
+    });
+
+    test("should call next with an error if updates object is empty", async () => {
+      req.params.id = "60e6f965b4d6c9e529c7f0b3";
+      req.body = {};
+
+      await UserController.updateUser(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        ApiError.BadRequest("Updates must be a non-empty object")
+      );
+    });
+
+    test("should call next with an error if user is not found", async () => {
+      req.params.id = "60e6f965b4d6c9e529c7f0b3";
+      req.body = { fullname: "Updated User" };
+
+      jest.spyOn(userService, "updateUser").mockResolvedValue(null);
+
+      await UserController.updateUser(req, res, next);
+
+      expect(userService.updateUser).toHaveBeenCalledWith(
+        req.params.id,
+        req.body
+      );
+      expect(next).toHaveBeenCalledWith(
+        ApiError.NotFound("User with ID 60e6f965b4d6c9e529c7f0b3 not found")
+      );
     });
   });
 

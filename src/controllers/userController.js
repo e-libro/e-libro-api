@@ -133,10 +133,12 @@ class UserController {
         throw ApiError.NotFound(`User with ID ${id} not found`);
       }
 
+      const userResponseDTO = userDTO.mapUserToUserResponseDTO(updatedUser);
+
       return res.status(200).json({
         status: "success",
         message: "User updated successfully",
-        data: updatedUser,
+        data: userResponseDTO,
         error: null,
       });
     } catch (error) {
