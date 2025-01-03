@@ -1,7 +1,6 @@
 import { userService } from "../services/index.js";
 import { userDTO } from "../dtos/index.js";
 import ApiError from "../errors/ApiError.js";
-import dotenv from "dotenv";
 
 class AuthController {
   async signup(req, res, next) {
@@ -170,6 +169,42 @@ class AuthController {
         status: "success",
         message: "Authenticated user retrieved successfully",
         data: authenticatedUser,
+        error: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async changePassword(req, res, next) {
+    try {
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        throw ApiError.BadRequest(
+          "Current password and new password are required"
+        );
+      }
+
+      const user = req.user; // Asume que `req.user` ya contiene el usuario autenticado (middleware de autenticación).
+
+      if (!user) {
+        throw ApiError.Unauthorized("User is not authenticated");
+      }
+
+      const isMatch = user.comparePassword(currentPassword);
+
+      if (!isMatch) {
+        throw ApiError.Unauthorized("Current password is incorrect");
+      }
+
+      user.password = newPassword; // Asegúrate de que el esquema de usuario maneje el hash del password.
+      await user.save();
+
+      return res.status(200).json({
+        status: "success",
+        message: "Password changed successfully",
+        data: null,
         error: null,
       });
     } catch (error) {

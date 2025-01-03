@@ -31,5 +31,15 @@ authRouter
 authRouter
   .route("/v1/auth/me")
   .post(authMiddleware.verifyToken, authController.getAuthenticatedUser);
+authRouter
+  .route("/v1/auth/change-password")
+  .patch(
+    authMiddleware.verifyToken,
+    validateRequestMiddleware.validateRequest(
+      authSchemas.changePasswordSchema,
+      validateRequestMiddleware.RequestSourceEnum.BODY
+    ),
+    authController.changePassword
+  );
 
 export default authRouter;

@@ -222,4 +222,85 @@ describe("AuthController", () => {
       });
     });
   });
+
+  describe("changePassword", () => {
+    test("should change the password and return success response", async () => {
+      const req = {
+        body: { currentPassword: "oldPass", newPassword: "newPass" },
+        user: {
+          comparePassword: jest.fn().mockReturnValue(true),
+          save: jest.fn().mockResolvedValue(true),
+        },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      const next = jest.fn();
+
+      await authController.changePassword(req, res, next);
+
+      expect(req.user.comparePassword).toHaveBeenCalledWith("oldPass");
+      expect(req.user.password).toBe("newPass");
+      expect(req.user.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        status: "success",
+        message: "Password changed successfully",
+        data: null,
+        error: null,
+      });
+    });
+
+    test("should call next with ApiError.BadRequest if passwords are missing", async () => {
+      const req = { body: {} };
+      const res = {};
+      const next = jest.fn();
+
+      await authController.changePassword(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Current password and new password are required",
+          code: 400,
+        })
+      );
+    });
+
+    test("should call next with ApiError.Unauthorized if user is not authenticated", async () => {
+      const req = {
+        body: { currentPassword: "oldPass", newPassword: "newPass" },
+        user: null,
+      };
+      const res = {};
+      const next = jest.fn();
+
+      await authController.changePassword(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "User is not authenticated",
+          code: 401,
+        })
+      );
+    });
+
+    test("should call next with ApiError.Unauthorized if current password is incorrect", async () => {
+      const req = {
+        body: { currentPassword: "oldPass", newPassword: "newPass" },
+        user: {
+          comparePassword: jest.fn().mockReturnValue(false),
+        },
+      };
+      const res = {};
+      const next = jest.fn();
+
+      await authController.changePassword(req, res, next);
+
+      expect(req.user.comparePassword).toHaveBeenCalledWith("oldPass");
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Current password is incorrect",
+          code: 401,
+        })
+      );
+    });
+  });
 });

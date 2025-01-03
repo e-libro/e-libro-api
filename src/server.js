@@ -5,7 +5,12 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import db from "./models/index.js";
-import { authRouter, bookRouter, userRouter } from "./routes/v1/index.js";
+import {
+  authRouter,
+  bookRouter,
+  userRouter,
+  reportRouter,
+} from "./routes/v1/index.js";
 import morgan from "morgan";
 import logger from "./logger/logger.js";
 import ApiError from "./errors/ApiError.js";
@@ -42,6 +47,7 @@ server.use(
 server.use(authRouter);
 server.use(bookRouter);
 server.use(userRouter);
+server.use(reportRouter);
 
 server.use((req, res, next) => {
   next(ApiError.NotFound("The requested resource could not be found"));

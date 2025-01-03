@@ -25,7 +25,9 @@ describe("UserController", () => {
         password: "password123",
         role: "user",
       };
-      const userMock = {
+
+      const createdUserMock = { _id: "1" };
+      const foundUserMock = {
         id: "1",
         fullname: "Test User",
         email: "test@example.com",
@@ -38,7 +40,8 @@ describe("UserController", () => {
         role: "user",
       };
 
-      jest.spyOn(userService, "createUser").mockResolvedValue(userMock);
+      jest.spyOn(userService, "createUser").mockResolvedValue(createdUserMock);
+      jest.spyOn(userService, "getUserById").mockResolvedValue(foundUserMock);
       jest
         .spyOn(userDTO, "mapUserToUserResponseDTO")
         .mockReturnValue(userResponseDTO);
@@ -46,7 +49,10 @@ describe("UserController", () => {
       await UserController.createUser(req, res, next);
 
       expect(userService.createUser).toHaveBeenCalledWith(req.body);
-      expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(userMock);
+      expect(userService.getUserById).toHaveBeenCalledWith(createdUserMock._id);
+      expect(userDTO.mapUserToUserResponseDTO).toHaveBeenCalledWith(
+        foundUserMock
+      );
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith({
         status: "success",
@@ -54,6 +60,40 @@ describe("UserController", () => {
         data: userResponseDTO,
         error: null,
       });
+    });
+    test("should call next with ApiError.Conflict if email is already in use", async () => {
+      req.body = {
+        fullname: "Test User",
+        email: "test@example.com",
+        password: "password123",
+      };
+
+      jest
+        .spyOn(userService, "createUser")
+        .mockRejectedValue(new Error("The email address is already in use."));
+
+      await UserController.createUser(req, res, next);
+
+      expect(userService.createUser).toHaveBeenCalledWith(req.body);
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "The email address is already in use.",
+          code: 409,
+        })
+      );
+    });
+
+    test("should call next with ApiError.BadRequest if required fields are missing", async () => {
+      req.body = { email: "test@example.com", password: "password123" };
+
+      await UserController.createUser(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Fullname, email, and password are required",
+          code: 400,
+        })
+      );
     });
 
     test("should call next with an error if required fields are missing", async () => {

@@ -19,7 +19,9 @@ class UserController {
         role,
       });
 
-      const userResponseDTO = userDTO.mapUserToUserResponseDTO(createdUser);
+      const foundUser = await userService.getUserById(createdUser._id);
+
+      const userResponseDTO = userDTO.mapUserToUserResponseDTO(foundUser);
 
       return res.status(201).json({
         status: "success",
@@ -42,6 +44,7 @@ class UserController {
       const limit = parseInt(req.query.limit) || 5;
       const fullname = req.query.fullname || "";
       const email = req.query.email || "";
+      const role = req.query.role || "";
 
       const filters = {};
 
@@ -51,6 +54,10 @@ class UserController {
 
       if (email) {
         filters.email = { $regex: new RegExp(email, "i") };
+      }
+
+      if (role) {
+        filters.role = role;
       }
 
       const sortBy = { fullname: "asc" };
