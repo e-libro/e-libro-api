@@ -1,6 +1,9 @@
 import { userService } from "../services/index.js";
 import { userDTO } from "../dtos/index.js";
 import ApiError from "../errors/ApiError.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 class AuthController {
   async signup(req, res, next) {
@@ -60,9 +63,9 @@ class AuthController {
       const refreshToken = await user.createRefreshToken();
 
       res.cookie("jwt", refreshToken, {
-        httpOnly: true,
-        sameSite: "Strict",
-        secure: true,
+        httpOnly: process.env.NODE_ENV === "production" ? true : false,
+        sameSite: process.env.NODE_ENV === "production" ? "Strict" : "None",
+        secure: process.env.NODE_ENV === "production" ? true : false,
         maxAge: 24 * 60 * 60 * 1000,
       });
 
@@ -101,9 +104,9 @@ class AuthController {
       const newRefreshToken = await foundUser.createRefreshToken();
 
       res.cookie("jwt", newRefreshToken, {
-        httpOnly: true,
-        sameSite: "Strict",
-        secure: true,
+        httpOnly: process.env.NODE_ENV === "production" ? true : false,
+        sameSite: process.env.NODE_ENV === "production" ? "Strict" : "None",
+        secure: process.env.NODE_ENV === "production" ? true : false,
         maxAge: 24 * 60 * 60 * 1000,
       });
 
@@ -141,9 +144,9 @@ class AuthController {
       await foundUser.deleteRefreshToken();
 
       res.clearCookie("jwt", {
-        httpOnly: true,
-        sameSite: "Strict",
-        secure: true,
+        httpOnly: process.env.NODE_ENV === "production" ? true : false,
+        sameSite: process.env.NODE_ENV === "production" ? "Strict" : "None",
+        secure: process.env.NODE_ENV === "production" ? true : false,
       });
 
       return res.status(204).json({
