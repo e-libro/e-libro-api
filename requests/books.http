@@ -4,7 +4,6 @@
 @email = alfredo.ernesto.arias@outlook.com
 @password = 123456@aM
 ### 
-
 # @name signin
 
 POST http://{{host}}:{{port}}/{{version}}/auth/signin HTTP/1.1
@@ -17,7 +16,7 @@ Content-Type: application/json
 
 ###
 
-@accessToken = {{ signin.response.body.$.accessToken}}
+@accessToken = {{ signin.response.body.$.data.accessToken}}
 
 ###
 
