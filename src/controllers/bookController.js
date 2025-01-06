@@ -15,31 +15,50 @@ class bookController {
 
       const title = req.query.title || "";
       const author = req.query.author || "";
-
       const language = req.query.language || "es";
 
-      const filters = {};
-
+      // 1. OR filters (para title y author)
+      const orFilters = [];
       if (title) {
-        filters.title = { $regex: new RegExp(title, "i") };
+        orFilters.push({ title: { $regex: new RegExp(title, "i") } });
       }
-
       if (author) {
-        filters["authors.name"] = { $regex: new RegExp(author, "i") };
+        orFilters.push({ "authors.name": { $regex: new RegExp(author, "i") } });
       }
 
-      filters.languages = { $in: [language] };
+      // 2. AND filters (para language, y luego el OR anterior)
+      const andFilters = [];
+      // Filtro por idioma
+      if (language) {
+        andFilters.push({ languages: { $in: [language] } });
+      }
 
+      // Si tenemos al menos una condición OR, la añadimos
+      if (orFilters.length > 0) {
+        andFilters.push({ $or: orFilters });
+      }
+
+      // 3. Construimos el objeto final de filtros
+      let filters = {};
+      if (andFilters.length > 1) {
+        filters = { $and: andFilters };
+      } else if (andFilters.length === 1) {
+        filters = andFilters[0];
+      }
+      // si andFilters.length === 0 => filters = {}
+
+      // Definimos el criterio de ordenación
       const sortBy = { title: "asc" };
 
+      // Obtenemos libros y total de documentos
       const books = await bookService.getAllBooks(filters, sortBy, page, limit);
-
       const total = await bookService.countBooks(filters);
 
       if (!books || books.length === 0) {
         throw ApiError.NotFound("No books found");
       }
 
+      // Transformación de cada libro a un DTO
       const bookResponseDTOs = books.map((book) =>
         bookDTO.mapBookToBookResponseDTO(book)
       );
@@ -55,7 +74,7 @@ class bookController {
 
       return res.status(200).json({
         status: "success",
-        message: "Book retrieved successfully",
+        message: "Books retrieved successfully",
         data: data,
         error: null,
       });
@@ -92,15 +111,7 @@ class bookController {
       }
 
       if (error.message.includes("not found")) {
-        return res.status(404).json({
-          status: "error",
-          message: "Book not found",
-          data: null,
-          error: {
-            code: 404,
-            details: error.message,
-          },
-        });
+        next(ApiError.NotFound(error.message));
       }
 
       next(error);

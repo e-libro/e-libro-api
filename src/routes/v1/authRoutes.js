@@ -42,4 +42,19 @@ authRouter
     authController.changePassword
   );
 
+// Mobile app routes
+authRouter
+  .route("/v1/auth/mobile-signin")
+  .post(
+    validateRequestMiddleware.validateRequest(
+      authSchemas.signinSchema,
+      validateRequestMiddleware.RequestSourceEnum.BODY
+    ),
+    authController.mobileSignin
+  );
+authRouter.route("/v1/auth/mobile-refresh").post(authController.mobileRefresh);
+authRouter
+  .route("/v1/auth/mobile-signout")
+  .get(authMiddleware.verifyToken, authController.mobileSignout);
+
 export default authRouter;

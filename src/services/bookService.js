@@ -11,6 +11,7 @@ class BookService {
           `Filters must be a valid object, received: ${typeof filters}`
         );
       }
+
       if (!sortBy || typeof sortBy !== "object") {
         throw new Error(
           `SortBy must be a valid object, received: ${typeof sortBy}`

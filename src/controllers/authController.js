@@ -2,6 +2,7 @@ import { userService } from "../services/index.js";
 import { userDTO } from "../dtos/index.js";
 import ApiError from "../errors/ApiError.js";
 import dotenv from "dotenv";
+import { response } from "express";
 
 dotenv.config();
 
@@ -210,6 +211,106 @@ class AuthController {
         data: null,
         error: null,
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async mobileSignin(req, res, next) {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        throw ApiError.BadRequest("Invalid email or password");
+      }
+
+      const user = await userService.getUserByEmail(email);
+
+      if (!user) {
+        throw ApiError.Unauthorized("Invalid email or password");
+      }
+
+      const match = user.comparePassword(password);
+
+      if (!match) {
+        throw ApiError.Unauthorized("Invalid email or password");
+      }
+
+      const accessToken = user.createAccessToken();
+      const refreshToken = await user.createRefreshToken();
+
+      return res.status(200).json({
+        status: "success",
+        message: "Signin successful",
+        data: { accessToken, refreshToken },
+        error: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async mobileRefresh(req, res, next) {
+    try {
+      const refreshToken = req.headers["x-refresh-token"];
+
+      console.log("Mi header personalizado:", refreshToken);
+
+      console.log(refreshToken);
+
+      if (!refreshToken) {
+        throw ApiError.Unauthorized("Refresh token is required");
+      }
+
+      const verifiedToken = await userService.verifyRefreshToken(refreshToken);
+
+      if (!verifiedToken) {
+        throw ApiError.Unauthorized("Invalid or expired refresh token");
+      }
+
+      const foundUser = await userService.getUserById(verifiedToken.user.id);
+
+      if (!foundUser) {
+        throw ApiError.Unauthorized("User not found");
+      }
+
+      const newAccessToken = foundUser.createAccessToken();
+      const newRefreshToken = await foundUser.createRefreshToken();
+
+      return res.status(200).json({
+        status: "success",
+        message: "Refresh successful",
+        data: { accessToken: newAccessToken, refreshToken: newRefreshToken },
+        error: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async mobileSignout(req, res, next) {
+    try {
+      const refreshToken = req.headers["x-refresh-token"];
+
+      if (!refreshToken) {
+        throw ApiError.NotFound("Refresh token not found");
+      }
+
+      const verifiedToken = await userService.verifyRefreshToken(refreshToken);
+
+      if (!verifiedToken) {
+        throw ApiError.NotFound("Invalid refresh token");
+      }
+
+      const foundUser = await userService.getUserById(verifiedToken.user.id);
+
+      if (!foundUser) {
+        throw ApiError.NotFound("User not found");
+      }
+
+      await foundUser.deleteRefreshToken();
+
+      return res.sendStatus(204);
     } catch (error) {
       next(error);
     }
