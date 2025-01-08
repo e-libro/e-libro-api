@@ -303,4 +303,209 @@ describe("AuthController", () => {
       );
     });
   });
+
+  describe("AuthController - Mobile Authentication", () => {
+    let req, res, next;
+
+    beforeEach(() => {
+      req = { body: {}, headers: {} };
+      res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+        sendStatus: jest.fn(),
+      };
+      next = jest.fn();
+
+      jest.clearAllMocks();
+    });
+
+    describe("mobileSignin", () => {
+      test("should sign in a user and return access and refresh tokens", async () => {
+        req.body = { email: "test@example.com", password: "password123" };
+        const userMock = {
+          comparePassword: jest.fn().mockReturnValue(true),
+          createAccessToken: jest.fn().mockReturnValue("access-token"),
+          createRefreshToken: jest.fn().mockResolvedValue("refresh-token"),
+        };
+
+        jest.spyOn(userService, "getUserByEmail").mockResolvedValue(userMock);
+
+        await authController.mobileSignin(req, res, next);
+
+        expect(userService.getUserByEmail).toHaveBeenCalledWith(
+          "test@example.com"
+        );
+        expect(userMock.comparePassword).toHaveBeenCalledWith("password123");
+        expect(userMock.createAccessToken).toHaveBeenCalled();
+        expect(userMock.createRefreshToken).toHaveBeenCalled();
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+          status: "success",
+          message: "Signin successful",
+          data: { accessToken: "access-token", refreshToken: "refresh-token" },
+          error: null,
+        });
+      });
+
+      test("should call next with ApiError.BadRequest if email or password is missing", async () => {
+        req.body = { email: "" };
+
+        await authController.mobileSignin(req, res, next);
+
+        expect(next).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Invalid email or password",
+            code: 400,
+          })
+        );
+      });
+
+      test("should call next with ApiError.Unauthorized if user is not found", async () => {
+        req.body = { email: "test@example.com", password: "password123" };
+
+        jest.spyOn(userService, "getUserByEmail").mockResolvedValue(null);
+
+        await authController.mobileSignin(req, res, next);
+
+        expect(next).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Invalid email or password",
+            code: 401,
+          })
+        );
+      });
+
+      test("should call next with ApiError.Unauthorized if password is incorrect", async () => {
+        req.body = { email: "test@example.com", password: "wrongpassword" };
+        const userMock = { comparePassword: jest.fn().mockReturnValue(false) };
+
+        jest.spyOn(userService, "getUserByEmail").mockResolvedValue(userMock);
+
+        await authController.mobileSignin(req, res, next);
+
+        expect(userMock.comparePassword).toHaveBeenCalledWith("wrongpassword");
+        expect(next).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Invalid email or password",
+            code: 401,
+          })
+        );
+      });
+    });
+
+    describe("mobileRefresh", () => {
+      test("should refresh tokens and return new access and refresh tokens", async () => {
+        req.headers["x-refresh-token"] = "valid-refresh-token";
+        const verifiedTokenMock = { user: { id: "user-id" } };
+        const userMock = {
+          createAccessToken: jest.fn().mockReturnValue("new-access-token"),
+          createRefreshToken: jest.fn().mockResolvedValue("new-refresh-token"),
+        };
+
+        jest
+          .spyOn(userService, "verifyRefreshToken")
+          .mockResolvedValue(verifiedTokenMock);
+        jest.spyOn(userService, "getUserById").mockResolvedValue(userMock);
+
+        await authController.mobileRefresh(req, res, next);
+
+        expect(userService.verifyRefreshToken).toHaveBeenCalledWith(
+          "valid-refresh-token"
+        );
+        expect(userService.getUserById).toHaveBeenCalledWith("user-id");
+        expect(userMock.createAccessToken).toHaveBeenCalled();
+        expect(userMock.createRefreshToken).toHaveBeenCalled();
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+          status: "success",
+          message: "Refresh successful",
+          data: {
+            accessToken: "new-access-token",
+            refreshToken: "new-refresh-token",
+          },
+          error: null,
+        });
+      });
+
+      test("should call next with ApiError.Unauthorized if refresh token is missing", async () => {
+        req.headers["x-refresh-token"] = "";
+
+        await authController.mobileRefresh(req, res, next);
+
+        expect(next).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Refresh token is required",
+            code: 401,
+          })
+        );
+      });
+
+      test("should call next with ApiError.Unauthorized if refresh token is invalid", async () => {
+        req.headers["x-refresh-token"] = "invalid-refresh-token";
+
+        jest.spyOn(userService, "verifyRefreshToken").mockResolvedValue(null);
+
+        await authController.mobileRefresh(req, res, next);
+
+        expect(next).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Invalid or expired refresh token",
+            code: 401,
+          })
+        );
+      });
+    });
+
+    describe("mobileSignout", () => {
+      test("should sign out a user and return 204", async () => {
+        req.headers["x-refresh-token"] = "valid-refresh-token";
+        const verifiedTokenMock = { user: { id: "user-id" } };
+        const userMock = {
+          deleteRefreshToken: jest.fn().mockResolvedValue(true),
+        };
+
+        jest
+          .spyOn(userService, "verifyRefreshToken")
+          .mockResolvedValue(verifiedTokenMock);
+        jest.spyOn(userService, "getUserById").mockResolvedValue(userMock);
+
+        await authController.mobileSignout(req, res, next);
+
+        expect(userService.verifyRefreshToken).toHaveBeenCalledWith(
+          "valid-refresh-token"
+        );
+        expect(userService.getUserById).toHaveBeenCalledWith("user-id");
+        expect(userMock.deleteRefreshToken).toHaveBeenCalled();
+        expect(res.sendStatus).toHaveBeenCalledWith(204);
+      });
+
+      test("should call next with ApiError.NotFound if refresh token is missing", async () => {
+        req.headers["x-refresh-token"] = "";
+
+        await authController.mobileSignout(req, res, next);
+
+        expect(next).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Not Found",
+            code: 404,
+          })
+        );
+      });
+
+      test("should call next with ApiError.NotFound if refresh token is invalid", async () => {
+        req.headers["x-refresh-token"] = "invalid-refresh-token";
+
+        jest.spyOn(userService, "verifyRefreshToken").mockResolvedValue(null);
+
+        await authController.mobileSignout(req, res, next);
+
+        expect(next).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Not Found",
+            code: 404,
+          })
+        );
+      });
+    });
+  });
 });

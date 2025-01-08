@@ -5,42 +5,48 @@ import bookDTO from "../../src/dtos/bookDTO.js";
 import ApiError from "../../src/errors/ApiError.js";
 import mongoose from "mongoose";
 
-describe("BookController", () => {
-  describe("BookController.getAllBooks", () => {
-    afterEach(() => {
-      jest.clearAllMocks();
-    });
+afterEach(() => {
+  jest.clearAllMocks();
+});
 
-    test("should return 200 with book data and metadata", async () => {
-      const req = {
-        query: {
-          page: "1",
-          limit: "5",
-          title: "Test Title",
-          author: "Author Name",
-          language: "en",
-        },
+describe("BookController", () => {
+  describe("BookController - getAllBooks", () => {
+    let req, res, next;
+
+    beforeEach(() => {
+      req = {
+        query: {},
       };
-      const res = {
+      res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn(),
       };
-      const next = jest.fn();
+      next = jest.fn();
 
-      const filters = {
-        title: { $regex: /Test Title/i },
-        "authors.name": { $regex: /Author Name/i },
-        languages: { $in: ["en"] },
+      jest.clearAllMocks();
+    });
+
+    test("should return books with filters and pagination", async () => {
+      req.query = {
+        page: "1",
+        limit: "5",
+        title: "Test",
+        author: "Author",
+        language: "en",
       };
 
       const booksMock = [
-        { id: "1", title: "Book One" },
-        { id: "2", title: "Book Two" },
+        { id: "1", title: "Test Book", downloads: 50 },
+        { id: "2", title: "Another Test", downloads: 30 },
       ];
-      const total = 10;
+
+      const bookResponseDTOs = [
+        { id: "1", title: "Test Book", downloads: 50 },
+        { id: "2", title: "Another Test", downloads: 30 },
+      ];
 
       jest.spyOn(bookService, "getAllBooks").mockResolvedValue(booksMock);
-      jest.spyOn(bookService, "countBooks").mockResolvedValue(total);
+      jest.spyOn(bookService, "countBooks").mockResolvedValue(10);
       jest
         .spyOn(bookDTO, "mapBookToBookResponseDTO")
         .mockImplementation((book) => book);
@@ -48,66 +54,79 @@ describe("BookController", () => {
       await bookController.getAllBooks(req, res, next);
 
       expect(bookService.getAllBooks).toHaveBeenCalledWith(
-        filters,
+        {
+          $and: [
+            { languages: { $in: ["en"] } },
+            {
+              $or: [
+                { title: { $regex: new RegExp("Test", "i") } },
+                { "authors.name": { $regex: new RegExp("Author", "i") } },
+              ],
+            },
+          ],
+        },
         { title: "asc" },
         0,
         5
       );
-      expect(bookService.countBooks).toHaveBeenCalledWith(filters);
-      expect(bookDTO.mapBookToBookResponseDTO).toHaveBeenCalledTimes(
-        booksMock.length
-      );
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: "success",
-          message: "Book retrieved successfully",
-          data: expect.objectContaining({
-            totalDocuments: total,
-            totalPages: 2,
-            page: 1,
-            limit: 5,
-            documents: booksMock,
-            language: "en",
-          }),
-          error: null,
-        })
-      );
-    });
 
-    test("should call next with NotFound error if no books are found", async () => {
-      const req = {
-        query: {
-          page: "1",
-          limit: "5",
+      expect(bookService.countBooks).toHaveBeenCalledWith({
+        $and: [
+          { languages: { $in: ["en"] } },
+          {
+            $or: [
+              { title: { $regex: new RegExp("Test", "i") } },
+              { "authors.name": { $regex: new RegExp("Author", "i") } },
+            ],
+          },
+        ],
+      });
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        status: "success",
+        message: "Books retrieved successfully",
+        data: {
+          totalDocuments: 10,
+          totalPages: 2,
+          page: 1,
+          limit: 5,
+          documents: bookResponseDTOs,
           language: "en",
         },
+        error: null,
+      });
+    });
+
+    test("should handle not found error when no books are retrieved", async () => {
+      req.query = {
+        page: "1",
+        limit: "5",
+        language: "en",
       };
-      const res = {};
-      const next = jest.fn();
 
       jest.spyOn(bookService, "getAllBooks").mockResolvedValue([]);
 
       await bookController.getAllBooks(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ApiError));
-      expect(next.mock.calls[0][0].message).toBe("Not Found");
-      expect(next.mock.calls[0][0].code).toBe(404);
+      expect(bookService.getAllBooks).toHaveBeenCalled();
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Not Found",
+          code: 404,
+        })
+      );
     });
 
-    test("should pass errors to next middleware on failure", async () => {
-      const req = { query: {} };
-      const res = {};
-      const next = jest.fn();
+    test("should call next with error if an exception occurs", async () => {
+      req.query = { page: "1", limit: "5" };
+      const error = new Error("Database error");
 
-      jest
-        .spyOn(bookService, "getAllBooks")
-        .mockRejectedValue(new Error("Service error"));
+      jest.spyOn(bookService, "getAllBooks").mockRejectedValue(error);
 
       await bookController.getAllBooks(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(Error));
-      expect(next.mock.calls[0][0].message).toBe("Service error");
+      expect(next).toHaveBeenCalledWith(error);
     });
   });
 
